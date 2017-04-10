@@ -1,0 +1,32 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+	<modelVersion>4.0.0</modelVersion>
+	<parent>
+		<groupId>cn.ufunny.game.libs</groupId>
+		<artifactId>common-libs</artifactId>
+		<version>0.0.2-SNAPSHOT</version>
+	</parent>
+	<artifactId>cache-ehcache</artifactId>
+	<version>${libs-version}</version>
+	<name>cache-ehcache</name>
+	<description>cache-ehcache</description>
+
+
+	<dependencies>
+		<dependency>
+			<groupId>cn.ufunny.game.libs</groupId>
+			<artifactId>cache-interface</artifactId>
+			<version>${project.version}</version>
+		</dependency>
+
+		<dependency>
+			<groupId>net.sf.ehcache</groupId>
+			<artifactId>ehcache</artifactId>
+			<version>2.10.0</version>
+		</dependency>
+	</dependencies>
+	
+	<build>
+		<finalName>cache-ehcache-${project.version}</finalName>
+	</build>
+</project>
