@@ -1,14 +1,15 @@
 package me.jarkimzhu.libs.utils;
 
+import com.alibaba.fastjson.JSON;
+
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.lang.reflect.Type;
 import java.math.BigDecimal;
 import java.util.Collection;
 import java.util.Objects;
 import java.util.Set;
 import java.util.function.Predicate;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 public abstract class CommonUtils {
 
@@ -38,17 +39,18 @@ public abstract class CommonUtils {
     }
 
     /**
-     * 判断值是否为空，长度是否在min和max之间
+     * 判断字符串长度是否在min和max之间
      *
      * @param value
-     * @param min
-     * @param max
-     * @return -1 : 为空 0 长度不否 1 合格
+     * @param min 最小长度
+     * @param max 最大长度
+     * @return -1 为空， 0 长度不符， 1 合格
      */
-    public static int isBlank(String value, int min, int max) {
-        if (value == null || value.trim().length() == 0) {
+    public static int between(String value, int min, int max) {
+        int length;
+        if (isBlank(value)) {
             return -1;
-        } else if (value.trim().length() >= min && value.trim().length() <= max) {
+        } else if ((length = value.trim().length()) >= min && length <= max) {
             return 1;
         } else {
             return 0;
@@ -184,6 +186,30 @@ public abstract class CommonUtils {
 
     public static BigDecimal getBigDecimalNotNull(BigDecimal value) {
         return getBigDecimal(value, BigDecimal.ZERO);
+    }
+
+    public static Object getValueByType(String value, Type type) {
+        if(isBlank(value) || type == null) {
+            return null;
+        } else if(type == String.class) {
+            return value;
+        } else if(type == Integer.class || type == int.class) {
+            return getInteger(value);
+        } else if(type == Short.class || type == short.class) {
+            return getInteger(value);
+        } else if(type == Double.class || type == double.class) {
+            return getDouble(value);
+        } else if(type == Float.class || type == float.class) {
+            return getDouble(value);
+        } else if(type == Character.class || type == char.class) {
+            return value.charAt(0);
+        } else if(type == Boolean.class || type == boolean.class) {
+            return getBoolean(value);
+        } else if(type == BigDecimal.class) {
+            return new BigDecimal(value);
+        } else {
+            return JSON.parseObject(value, type);
+        }
     }
 
     public static void removeIfNull(Collection<?> list) {

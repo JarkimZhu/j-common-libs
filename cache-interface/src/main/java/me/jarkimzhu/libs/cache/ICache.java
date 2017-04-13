@@ -6,21 +6,50 @@ import java.util.function.BiConsumer;
 
 /**
  * Created on 2017/4/7.
+ *
  * @author JarkimZhu
  * @since jdk1.8
- *
  */
 public interface ICache<K, V> {
-    int size();
+    String getCacheName();
+
+    long size();
+
     boolean isEmpty();
+
     boolean containsKey(K key);
+
     boolean containsValue(V value);
+
     V get(K key);
-    V put(K key, V value);
+
+    void put(K key, V value);
+
     V putIfAbsent(K key, V value);
-    V remove(K key);
+
+    void remove(K key);
+
     void clear();
+
     Set<K> keySet();
+
     Collection<V> values();
+
     void forEach(BiConsumer<? super K, ? super V> action);
+}
+
+interface ICacheObject<V> {
+    V getData();
+
+    void setData(V data);
+
+    void settle();
+
+    void unsettle();
+
+    void change();
+
+    boolean isChange();
+
+    boolean isDirty();
 }

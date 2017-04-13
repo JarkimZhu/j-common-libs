@@ -28,6 +28,7 @@
         <module>command-utils</module>
         <module>cache-interface</module>
         <module>cache-redis</module>
+        <module>cache-map</module>
     </modules>
     <packaging>pom</packaging>
 

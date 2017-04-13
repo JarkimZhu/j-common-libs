@@ -17,6 +17,11 @@
             <artifactId>cache-interface</artifactId>
             <version>${project.version}</version>
         </dependency>
+        <dependency>
+            <groupId>me.jarkimzhu.libs</groupId>
+            <artifactId>common-utils</artifactId>
+            <version>${project.version}</version>
+        </dependency>
 
         <dependency>
             <groupId>redis.clients</groupId>
