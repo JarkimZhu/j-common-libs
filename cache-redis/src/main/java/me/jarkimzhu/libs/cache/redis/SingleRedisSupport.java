@@ -2,12 +2,12 @@ package me.jarkimzhu.libs.cache.redis;
 
 import me.jarkimzhu.libs.utils.CommonUtils;
 import me.jarkimzhu.libs.utils.ObjectUtils;
+import me.jarkimzhu.libs.utils.reflection.ReflectionUtils;
 import redis.clients.jedis.Jedis;
 import redis.clients.util.SafeEncoder;
 
 import java.io.IOException;
 import java.io.Serializable;
-import java.lang.reflect.ParameterizedType;
 
 /**
  * Created on 2017/4/13.
@@ -17,22 +17,23 @@ import java.lang.reflect.ParameterizedType;
  */
 public class SingleRedisSupport<K extends Serializable, V extends Serializable> {
 
-    private Class keyClass;
-    private Class valueClass;
+    private Class<K> keyClass;
+    private Class<V> valueClass;
 
-    public SingleRedisSupport() {
-        this.keyClass = (Class) ((ParameterizedType) getClass().getGenericSuperclass()).getActualTypeArguments()[0];
-        this.valueClass = (Class) ((ParameterizedType) getClass().getGenericSuperclass()).getActualTypeArguments()[1];
+    public SingleRedisSupport(Class<K> keyClass, Class<V> valueClass) {
+        this.keyClass = keyClass;
+        this.valueClass = valueClass;
     }
 
     @SuppressWarnings("unchecked")
     public V get(Jedis jedis, K key) throws IOException, ClassNotFoundException {
-        if (key instanceof String) {
-            if (valueClass.isPrimitive()) {
-                String sValue = jedis.get((String) key);
+        if (ReflectionUtils.isPrimitiveOrWrapper(key.getClass())) {
+            String sKey = CommonUtils.toString(key);
+            if (ReflectionUtils.isPrimitiveOrWrapper(valueClass)) {
+                String sValue = jedis.get(sKey);
                 return (V) CommonUtils.getValueByType(sValue, valueClass);
             } else {
-                byte[] bytes = jedis.get(SafeEncoder.encode((String) key));
+                byte[] bytes = jedis.get(SafeEncoder.encode(sKey));
                 return ObjectUtils.deserialize(bytes);
             }
         } else {
@@ -41,11 +42,12 @@ public class SingleRedisSupport<K extends Serializable, V extends Serializable> 
     }
 
     public void put(Jedis jedis, K key, V value) throws IOException {
-        if (key instanceof String) {
-            if (valueClass.isPrimitive()) {
-                jedis.set((String) key, CommonUtils.toString(value));
+        if (ReflectionUtils.isPrimitiveOrWrapper(key.getClass())) {
+            String sKey = CommonUtils.toString(key);
+            if (ReflectionUtils.isPrimitiveOrWrapper(value.getClass())) {
+                jedis.set(sKey, CommonUtils.toString(value));
             } else {
-                jedis.set(SafeEncoder.encode((String) key), ObjectUtils.serialize(value));
+                jedis.set(SafeEncoder.encode(sKey), ObjectUtils.serialize(value));
             }
         } else {
             jedis.set(ObjectUtils.serialize(key), ObjectUtils.serialize(value));
@@ -53,16 +55,16 @@ public class SingleRedisSupport<K extends Serializable, V extends Serializable> 
     }
 
     public boolean exists(Jedis jedis, K key) throws IOException {
-        if (key instanceof String) {
-            return jedis.exists((String) key);
+        if (ReflectionUtils.isPrimitiveOrWrapper(key.getClass())) {
+            return jedis.exists(CommonUtils.toString(key));
         } else {
             return jedis.exists(ObjectUtils.serialize(key));
         }
     }
 
     public void del(Jedis jedis, K key) throws IOException {
-        if (key instanceof String) {
-            jedis.del((String) key);
+        if (ReflectionUtils.isPrimitiveOrWrapper(key.getClass())) {
+            jedis.del(CommonUtils.toString(key));
         } else {
             jedis.del(ObjectUtils.serialize(key));
         }

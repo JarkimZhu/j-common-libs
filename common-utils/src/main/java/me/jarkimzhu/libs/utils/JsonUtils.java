@@ -6,6 +6,7 @@ import com.alibaba.fastjson.parser.Feature;
 import com.alibaba.fastjson.serializer.*;
 import me.jarkimzhu.libs.utils.annotation.NumberFormat;
 import me.jarkimzhu.libs.utils.annotation.SerializedName;
+import me.jarkimzhu.libs.utils.reflection.ReflectionUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

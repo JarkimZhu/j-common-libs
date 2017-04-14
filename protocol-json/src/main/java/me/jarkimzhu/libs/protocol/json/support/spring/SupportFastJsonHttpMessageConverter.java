@@ -6,7 +6,7 @@ import com.alibaba.fastjson.support.config.FastJsonConfig;
 import com.alibaba.fastjson.support.spring.FastJsonHttpMessageConverter;
 import me.jarkimzhu.libs.protocol.json.ProtocolConverterFastJsonImpl;
 import me.jarkimzhu.libs.protocol.json.dto.JsonResultProtocol;
-import me.jarkimzhu.libs.utils.ReflectionUtils;
+import me.jarkimzhu.libs.utils.reflection.ReflectionUtils;
 import org.springframework.http.HttpOutputMessage;
 import org.springframework.http.converter.HttpMessageNotWritableException;
 

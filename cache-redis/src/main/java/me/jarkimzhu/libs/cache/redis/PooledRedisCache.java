@@ -2,7 +2,9 @@ package me.jarkimzhu.libs.cache.redis;
 
 import me.jarkimzhu.libs.cache.AbstractCache;
 import me.jarkimzhu.libs.cache.ICache;
+import me.jarkimzhu.libs.utils.CommonUtils;
 import me.jarkimzhu.libs.utils.ObjectUtils;
+import me.jarkimzhu.libs.utils.reflection.ReflectionUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import redis.clients.jedis.Jedis;
@@ -12,6 +14,8 @@ import sun.reflect.generics.reflectiveObjects.NotImplementedException;
 
 import java.io.IOException;
 import java.io.Serializable;
+import java.lang.reflect.Type;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.Set;
@@ -28,15 +32,26 @@ public class PooledRedisCache<K extends Serializable, V extends Serializable> ex
     private static final Logger logger = LoggerFactory.getLogger(PooledRedisCache.class);
 
     private JedisPool jedisPool;
-    private SingleRedisSupport<K, V> support = new SingleRedisSupport<>();
+    private SingleRedisSupport<K, V> support;
 
     public PooledRedisCache(JedisPool jedisPool) {
         super(null);
         this.jedisPool = jedisPool;
+        support = new SingleRedisSupport<>(keyClass, valueClass);
     }
 
     public PooledRedisCache(String cacheName, JedisPool jedisPool) {
         super(cacheName);
+        this.jedisPool = jedisPool;
+    }
+
+    public PooledRedisCache(String cacheName, JedisPool jedisPool, Type keyClass, Type valueClass) {
+        super(cacheName, keyClass, valueClass);
+        this.jedisPool = jedisPool;
+    }
+
+    public PooledRedisCache(JedisPool jedisPool, Type keyClass, Type valueClass) {
+        super(null, keyClass, valueClass);
         this.jedisPool = jedisPool;
     }
 
@@ -115,7 +130,7 @@ public class PooledRedisCache<K extends Serializable, V extends Serializable> ex
     @Override
     public Set<K> keySet() {
         try (Jedis jedis = jedisPool.getResource()) {
-            if(keyClass == String.class) {
+            if(ReflectionUtils.isPrimitiveOrWrapper(keyClass)) {
                 return (Set<K>) jedis.keys("*");
             } else {
                 Set<byte[]> keys = jedis.keys(SafeEncoder.encode("*"));
@@ -131,12 +146,27 @@ public class PooledRedisCache<K extends Serializable, V extends Serializable> ex
         return null;
     }
 
+    @SuppressWarnings("unchecked")
     @Override
     public Collection<V> values() {
         try (Jedis jedis = jedisPool.getResource()) {
             Set<byte[]> keySet = jedis.keys(SafeEncoder.encode("*"));
-            byte[][] keys = keySet.toArray(new byte[keySet.size()][]);
-            byte[][] values = jedis.mget(keys).toArray(new byte[keySet.size()][]);
+            int size = keySet.size();
+            byte[][] keys = keySet.toArray(new byte[size][]);
+            byte[][] values = jedis.mget(keys).toArray(new byte[size][]);
+
+            Collection<V> result = new ArrayList<>(size);
+            for(int i = 0; i < size; i++) {
+                byte[] bValues = values[i];
+                if(ReflectionUtils.isPrimitiveOrWrapper(valueClass)) {
+                    result.add((V) CommonUtils.getValueByType(SafeEncoder.encode(bValues), valueClass));
+                } else {
+                    result.add(ObjectUtils.deserialize(bValues));
+                }
+            }
+            return result;
+        } catch (IOException | ClassNotFoundException e) {
+            logger.error(e.getMessage(), e);
         }
         return null;
     }

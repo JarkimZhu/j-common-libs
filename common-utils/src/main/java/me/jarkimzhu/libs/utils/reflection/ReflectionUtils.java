@@ -1,4 +1,4 @@
-package me.jarkimzhu.libs.utils;
+package me.jarkimzhu.libs.utils.reflection;
 
 import java.lang.reflect.*;
 import java.util.ArrayList;
@@ -91,6 +91,13 @@ public abstract class ReflectionUtils {
 
     public static boolean isFramework(Class clazz) {
         return clazz != Object.class && (clazz.isPrimitive() || clazz.getTypeName().startsWith("java"));
+    }
+
+    public static boolean isPrimitiveOrWrapper(Class clazz) {
+        return clazz.isPrimitive() || clazz == String.class || clazz == Integer.class
+                || clazz == Double.class || clazz == Float.class || clazz == Long.class
+                || clazz == Short.class || clazz == Boolean.class || clazz == Byte.class
+                || clazz == Character.class;
     }
 
     public static Field[] getAllField(Class clazz) {
