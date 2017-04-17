@@ -16,7 +16,6 @@
         <module>protocol-json</module>
         <module>network-interface</module>
         <module>network-http</module>
-        <module>redis-interface</module>
         <module>network-http-interface</module>
         <module>script-executor-interface</module>
         <module>javascript-executor</module>
