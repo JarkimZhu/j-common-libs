@@ -36,6 +36,10 @@ public class SimpleDaoSpringImpl extends SqlSessionDaoSupport implements ISqlDao
         return session.selectList(selectId, params, rowBound);
     }
 
+    @Override
+    public <E> List<E> query(String selectId, Query params) {
+        return query(selectId, (Object) params);
+    }
 
     @Override
     public <E, T> Map<E, T> getMap(String selectId, String key, Object params) {
@@ -56,6 +60,7 @@ public class SimpleDaoSpringImpl extends SqlSessionDaoSupport implements ISqlDao
             session.getConnection().setAutoCommit(autoCommit);
         } catch (SQLException e) {
             logger.error(e.getMessage(), e);
+            throw new RuntimeException(e);
         }
         return session.insert(insertId, params);
     }
@@ -74,6 +79,7 @@ public class SimpleDaoSpringImpl extends SqlSessionDaoSupport implements ISqlDao
             session.getConnection().setAutoCommit(autoCommit);
         } catch (SQLException e) {
             logger.error(e.getMessage(), e);
+            throw new RuntimeException(e);
         }
         return session.update(updateId, params);
     }
@@ -91,30 +97,8 @@ public class SimpleDaoSpringImpl extends SqlSessionDaoSupport implements ISqlDao
             session.getConnection().setAutoCommit(autoCommit);
         } catch (SQLException e) {
             logger.error(e.getMessage(), e);
+            throw new RuntimeException(e);
         }
         return session.delete(deleteId, params);
-    }
-
-    @Override
-    public int save(String insertId, Object params) {
-        SqlSession session = getSqlSession();
-        return session.insert(insertId, params);
-    }
-
-    @Override
-    public int save(String insertId, Object params, boolean autoCommit) {
-        SqlSession session = getSqlSession();
-        try {
-            session.getConnection().setAutoCommit(autoCommit);
-        } catch (SQLException e) {
-            logger.error(e.getMessage(), e);
-        }
-        return session.insert(insertId, params);
-    }
-
-    @Override
-    public <E> List<E> query(String selectId, Query params) {
-        SqlSession session = getSqlSession();
-        return session.selectList(selectId, params);
     }
 }

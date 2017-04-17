@@ -28,9 +28,4 @@ public interface ISqlDao {
     int delete(String deleteId, Object params);
 
     int delete(String deleteId, Object params, boolean autoCommit);
-
-    int save(String insertId, Object params);
-
-    int save(String insertId, Object params, boolean autoCommit);
-
 }

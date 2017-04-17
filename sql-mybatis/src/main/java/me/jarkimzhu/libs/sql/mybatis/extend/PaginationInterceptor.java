@@ -22,9 +22,7 @@ import java.util.Properties;
 @Intercepts({@Signature(type=StatementHandler.class,method="prepare",args={Connection.class})})
 public class PaginationInterceptor implements Interceptor{
 
- 
-
-    private final static Logger log = LoggerFactory.getLogger(PaginationInterceptor.class);
+    private final static Logger logger = LoggerFactory.getLogger(PaginationInterceptor.class);
     private static final ObjectFactory DEFAULT_OBJECT_FACTORY = new DefaultObjectFactory();
     private static final ObjectWrapperFactory DEFAULT_OBJECT_WRAPPER_FACTORY = new DefaultObjectWrapperFactory();
     private static final ReflectorFactory DEFAULT_REFLECTOR_FACTORY = new DefaultReflectorFactory();
@@ -80,8 +78,6 @@ public class PaginationInterceptor implements Interceptor{
 
        }
 
-      
-
        String originalSql = (String)metaStatementHandler.getValue("delegate.boundSql.sql");
 
        metaStatementHandler.setValue("delegate.boundSql.sql", dialect.getLimitString(originalSql, rowBounds.getOffset(), rowBounds.getLimit()) );
@@ -90,9 +86,9 @@ public class PaginationInterceptor implements Interceptor{
 
        metaStatementHandler.setValue("delegate.rowBounds.limit", RowBounds.NO_ROW_LIMIT );
 
-       if(log.isDebugEnabled()){
+       if(logger.isDebugEnabled()){
 
-           log.debug("生成分页SQL : "+ boundSql.getSql());
+           logger.debug("生成分页SQL : "+ boundSql.getSql());
 
        }
 
