@@ -2,16 +2,23 @@ package me.jarkimzhu.libs.cache.redis;
 
 import me.jarkimzhu.libs.cache.AbstractCache;
 import me.jarkimzhu.libs.cache.ICache;
+import me.jarkimzhu.libs.cache.redis.utils.BulkReplyParser;
+import me.jarkimzhu.libs.utils.CommonUtils;
+import me.jarkimzhu.libs.utils.ObjectUtils;
+import me.jarkimzhu.libs.utils.reflection.ReflectionUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import redis.clients.jedis.Jedis;
 import redis.clients.jedis.JedisCluster;
+import redis.clients.jedis.JedisPool;
 import redis.clients.jedis.exceptions.JedisClusterException;
+import redis.clients.util.JedisClusterCRC16;
+import redis.clients.util.SafeEncoder;
 
 import java.io.IOException;
 import java.io.Serializable;
 import java.lang.reflect.Type;
-import java.util.Collection;
-import java.util.Set;
+import java.util.*;
 import java.util.function.BiConsumer;
 
 /**
@@ -53,7 +60,24 @@ public class ClusterRedisCache<K extends Serializable, V extends Serializable> e
 
     @Override
     public long size() {
-        throw new JedisClusterException("No way to dispatch this command to Redis Cluster.");
+        long size = 0;
+        Map<String, JedisPool> clusterNodes = jedisCluster.getClusterNodes();
+        for(String k : clusterNodes.keySet()){
+            logger.debug("Getting size from: {}", k);
+            JedisPool jp = clusterNodes.get(k);
+            try (Jedis jedis = jp.getResource()) {
+                Map<String, Map<String, String>> result = BulkReplyParser.parseInfo(jedis.info("Replication"));
+                String role = result.get("Replication").get("role");
+                if("slave".equalsIgnoreCase(role)) {
+                    try (RedisSupport<K, V> s = support.begin(jedis)) {
+                        size += s.dbSize();
+                    }
+                }
+            } catch(Exception e){
+                logger.error("Getting size error: {}", e);
+            }
+        }
+        return size;
     }
 
     @Override
@@ -120,12 +144,69 @@ public class ClusterRedisCache<K extends Serializable, V extends Serializable> e
 
     @Override
     public Set<K> keySet() {
-        throw new JedisClusterException("No way to dispatch this command to Redis Cluster.");
+        Set<K> keys = new TreeSet<>();
+        Map<String, JedisPool> clusterNodes = jedisCluster.getClusterNodes();
+        for(String k : clusterNodes.keySet()){
+            logger.debug("Getting keys from: {}", k);
+            JedisPool jp = clusterNodes.get(k);
+            try (Jedis jedis = jp.getResource()) {
+                Map<String, Map<String, String>> result = BulkReplyParser.parseInfo(jedis.info("Replication"));
+                String role = result.get("Replication").get("role");
+                if("slave".equalsIgnoreCase(role)) {
+                    try (RedisSupport<K, V> s = support.begin(jedis)) {
+                        keys.addAll(s.keys("*"));
+                    }
+                }
+            } catch(Exception e){
+                logger.error("Getting keys error: {}", e);
+            }
+        }
+        return keys;
     }
 
     @Override
     public Collection<V> values() {
-        throw new JedisClusterException("No way to dispatch this command to Redis Cluster.");
+        logger.warn("This method[values] will cost very large memory from Redis Cluster");
+        Collection<V> result = new ArrayList<>();
+        Map<String, JedisPool> clusterNodes = jedisCluster.getClusterNodes();
+        for(String k : clusterNodes.keySet()) {
+            logger.debug("Getting keys from: {}", k);
+            JedisPool jp = clusterNodes.get(k);
+            try (Jedis jedis = jp.getResource()) {
+                Map<String, Map<String, String>> info = BulkReplyParser.parseInfo(jedis.info("Replication"));
+                String role = info.get("Replication").get("role");
+                if("master".equalsIgnoreCase(role)) {
+                    HashMap<Integer, Set<byte[]>> slotMap = new HashMap<>();
+                    Set<byte[]> bKeys = jedis.keys(SafeEncoder.encode("*"));
+                    for(byte[] bytes : bKeys) {
+                        int slot = JedisClusterCRC16.getSlot(bytes);
+                        Set<byte[]> slotKeys = slotMap.computeIfAbsent(slot, k1 -> new HashSet<>());
+                        slotKeys.add(bytes);
+                    }
+
+                    for(Map.Entry<Integer, Set<byte[]>> entry : slotMap.entrySet()) {
+                        int slot = entry.getKey();
+                        Set<byte[]> keySet = entry.getValue();
+                        int size = keySet.size();
+                        byte[][] keys = keySet.toArray(new byte[size][]);
+                        byte[][] values = jedis.mget(keys).toArray(new byte[size][]);
+                        // TODO 不同数据类型get方式不同
+                        for(int i = 0; i < size; i++) {
+                            byte[] bValues = values[i];
+                            if(ReflectionUtils.isPrimitiveOrWrapper(valueClass)) {
+                                result.add((V) CommonUtils.getValueByType(SafeEncoder.encode(bValues), valueClass));
+                            } else {
+                                result.add(ObjectUtils.deserialize(bValues));
+                            }
+                        }
+                    }
+                }
+            } catch(Exception e){
+                logger.error("Getting keys error: {}", e);
+                e.printStackTrace();
+            }
+        }
+        return result;
     }
 
     @Override

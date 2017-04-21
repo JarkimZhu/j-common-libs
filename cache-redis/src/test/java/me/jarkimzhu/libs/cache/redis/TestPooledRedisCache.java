@@ -1,5 +1,6 @@
 package me.jarkimzhu.libs.cache.redis;
 
+import org.junit.Ignore;
 import org.junit.Test;
 import redis.clients.jedis.JedisPool;
 import redis.clients.jedis.JedisPoolConfig;

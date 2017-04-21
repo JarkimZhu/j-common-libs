@@ -4,11 +4,15 @@ import me.jarkimzhu.libs.utils.CommonUtils;
 import me.jarkimzhu.libs.utils.ObjectUtils;
 import me.jarkimzhu.libs.utils.reflection.ReflectionUtils;
 import redis.clients.jedis.*;
+import redis.clients.jedis.exceptions.JedisClusterException;
+import redis.clients.jedis.exceptions.JedisException;
 import redis.clients.util.SafeEncoder;
 
 import java.io.Closeable;
 import java.io.IOException;
 import java.io.Serializable;
+import java.util.HashSet;
+import java.util.Set;
 
 /**
  * Created on 2017/4/13.
@@ -109,6 +113,40 @@ public class RedisSupport<K extends Serializable, V extends Serializable> implem
             } else {
                 ((BinaryJedisCommands) jedisCommands).del(bKey);
             }
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    public Set<K> keys(String pattern) throws IOException, ClassNotFoundException {
+        JedisCommands jedisCommands = getJedisCommands();
+        if(jedisCommands instanceof Jedis) {
+            Jedis jedis = (Jedis) jedisCommands;
+            if(ReflectionUtils.isPrimitiveOrWrapper(keyClass)) {
+                Set<String> keys = jedis.keys(pattern);
+                Set<K> keySet = new HashSet<>(keys.size());
+                for (String key : keys) {
+                    keySet.add((K) CommonUtils.getValueByType(key, keyClass));
+                }
+                return keySet;
+            } else {
+                Set<byte[]> keys = jedis.keys(SafeEncoder.encode(pattern));
+                Set<K> keySet = new HashSet<>(keys.size());
+                for (byte[] bytes : keys) {
+                    keySet.add(ObjectUtils.deserialize(bytes));
+                }
+                return keySet;
+            }
+        } else {
+            throw new JedisClusterException("JedisCluster not support this operation");
+        }
+    }
+
+    public long dbSize() {
+        JedisCommands jedisCommands = getJedisCommands();
+        if(jedisCommands instanceof Jedis) {
+            return ((Jedis) jedisCommands).dbSize();
+        } else {
+            throw new JedisClusterException("JedisCluster not support this operation");
         }
     }
 

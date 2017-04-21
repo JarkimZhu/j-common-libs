@@ -76,7 +76,7 @@ public class PooledRedisCache<K extends Serializable, V extends Serializable> ex
 
     @Override
     public boolean containsValue(V value) {
-        logger.info("This method will cost large memory to compare.");
+        logger.warn("This method[containsValue] will cost large memory to compare.");
         Collection<V> values = values();
         for(V v : values) {
             if(value.equals(v)) {
@@ -132,7 +132,7 @@ public class PooledRedisCache<K extends Serializable, V extends Serializable> ex
     public void remove(K key) {
         try (
                 Jedis jedis = jedisPool.getResource();
-                RedisSupport<K, V> s = support.begin(jedis);
+                RedisSupport<K, V> s = support.begin(jedis)
         ) {
             s.del(key);
         } catch (IOException e) {
