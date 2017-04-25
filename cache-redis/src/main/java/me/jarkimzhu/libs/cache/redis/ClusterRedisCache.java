@@ -3,21 +3,15 @@ package me.jarkimzhu.libs.cache.redis;
 import me.jarkimzhu.libs.cache.AbstractCache;
 import me.jarkimzhu.libs.cache.ICache;
 import me.jarkimzhu.libs.cache.redis.utils.BulkReplyParser;
-import me.jarkimzhu.libs.utils.CommonUtils;
-import me.jarkimzhu.libs.utils.ObjectUtils;
-import me.jarkimzhu.libs.utils.reflection.ReflectionUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import redis.clients.jedis.Jedis;
 import redis.clients.jedis.JedisCluster;
 import redis.clients.jedis.JedisPool;
 import redis.clients.jedis.exceptions.JedisClusterException;
-import redis.clients.util.JedisClusterCRC16;
-import redis.clients.util.SafeEncoder;
 
 import java.io.IOException;
 import java.io.Serializable;
-import java.lang.reflect.Type;
 import java.util.*;
 import java.util.function.BiConsumer;
 
@@ -35,27 +29,27 @@ public class ClusterRedisCache<K extends Serializable, V extends Serializable> e
     private RedisSupport<K, V> support;
 
     public ClusterRedisCache(JedisCluster jedisCluster) {
-        super(null);
+        super(null, -1);
         this.jedisCluster = jedisCluster;
-        support = new RedisSupport<>(keyClass, valueClass);
+        support = new RedisSupport<>(null, keyClass, valueClass);
     }
 
     public ClusterRedisCache(String cacheName, JedisCluster jedisCluster) {
-        super(cacheName);
+        super(cacheName, -1);
         this.jedisCluster = jedisCluster;
-        support = new RedisSupport<>(keyClass, valueClass);
+        support = new RedisSupport<>(cacheName, keyClass, valueClass);
     }
 
-    public ClusterRedisCache(String cacheName, JedisCluster jedisCluster, Type keyClass, Type valueClass) {
-        super(cacheName, keyClass, valueClass);
+    public ClusterRedisCache(String cacheName, JedisCluster jedisCluster, Class<K> keyClass, Class<V> valueClass) {
+        super(cacheName, -1, keyClass, valueClass);
         this.jedisCluster = jedisCluster;
-        support = new RedisSupport<>(this.keyClass, this.valueClass);
+        support = new RedisSupport<>(cacheName, this.keyClass, this.valueClass);
     }
 
-    public ClusterRedisCache(JedisCluster jedisCluster, Type keyClass, Type valueClass) {
-        super(null, keyClass, valueClass);
+    public ClusterRedisCache(JedisCluster jedisCluster, Class<K> keyClass, Class<V> valueClass) {
+        super(null, -1, keyClass, valueClass);
         this.jedisCluster = jedisCluster;
-        support = new RedisSupport<>(this.keyClass, this.valueClass);
+        support = new RedisSupport<>(null, this.keyClass, this.valueClass);
     }
 
     @Override
@@ -92,7 +86,14 @@ public class ClusterRedisCache<K extends Serializable, V extends Serializable> e
 
     @Override
     public boolean containsValue(V value) {
-        throw new JedisClusterException("No way to dispatch this command to Redis Cluster.");
+        logger.warn("This method[containsValue] will cost large memory to compare.");
+        Collection<V> values = values();
+        for(V v : values) {
+            if(value.equals(v)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     @Override
@@ -108,7 +109,12 @@ public class ClusterRedisCache<K extends Serializable, V extends Serializable> e
     @Override
     public void put(K key, V value) {
         try (RedisSupport<K, V> s = support.begin(jedisCluster)) {
-            s.put(key, value);
+            int timeout = (int) getTimeout();
+            if(timeout > -1) {
+                s.setex(key, value, timeout);
+            } else {
+                s.set(key, value);
+            }
         } catch (IOException e) {
             logger.error(e.getMessage(), e);
         }
@@ -119,7 +125,7 @@ public class ClusterRedisCache<K extends Serializable, V extends Serializable> e
         try (RedisSupport<K, V> s = support.begin(jedisCluster)) {
             V old = s.get(key);
             if(old == null) {
-                s.put(key, value);
+                s.set(key, value);
             }
             return old;
         } catch (IOException | ClassNotFoundException e) {
@@ -176,29 +182,8 @@ public class ClusterRedisCache<K extends Serializable, V extends Serializable> e
                 Map<String, Map<String, String>> info = BulkReplyParser.parseInfo(jedis.info("Replication"));
                 String role = info.get("Replication").get("role");
                 if("master".equalsIgnoreCase(role)) {
-                    HashMap<Integer, Set<byte[]>> slotMap = new HashMap<>();
-                    Set<byte[]> bKeys = jedis.keys(SafeEncoder.encode("*"));
-                    for(byte[] bytes : bKeys) {
-                        int slot = JedisClusterCRC16.getSlot(bytes);
-                        Set<byte[]> slotKeys = slotMap.computeIfAbsent(slot, k1 -> new HashSet<>());
-                        slotKeys.add(bytes);
-                    }
-
-                    for(Map.Entry<Integer, Set<byte[]>> entry : slotMap.entrySet()) {
-                        int slot = entry.getKey();
-                        Set<byte[]> keySet = entry.getValue();
-                        int size = keySet.size();
-                        byte[][] keys = keySet.toArray(new byte[size][]);
-                        byte[][] values = jedis.mget(keys).toArray(new byte[size][]);
-                        // TODO 不同数据类型get方式不同
-                        for(int i = 0; i < size; i++) {
-                            byte[] bValues = values[i];
-                            if(ReflectionUtils.isPrimitiveOrWrapper(valueClass)) {
-                                result.add((V) CommonUtils.getValueByType(SafeEncoder.encode(bValues), valueClass));
-                            } else {
-                                result.add(ObjectUtils.deserialize(bValues));
-                            }
-                        }
+                    try (RedisSupport<K, V> s = support.begin(jedis)) {
+                        result.addAll(s.values());
                     }
                 }
             } catch(Exception e){
@@ -212,5 +197,15 @@ public class ClusterRedisCache<K extends Serializable, V extends Serializable> e
     @Override
     public void forEach(BiConsumer<? super K, ? super V> action) {
         throw new JedisClusterException("No way to dispatch this command to Redis Cluster.");
+    }
+
+    @Override
+    public long getTimeout() {
+        long timeout = super.getTimeout();
+        if(timeout > -1) {
+            return timeout / 1000;
+        } else {
+            return timeout;
+        }
     }
 }

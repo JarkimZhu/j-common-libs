@@ -17,10 +17,12 @@ public abstract class AbstractCache<K, V> implements ICache<K, V> {
     protected Class<V> valueClass;
 
     private String cacheName;
+    private long timeout;
 
     @SuppressWarnings("unchecked")
-    protected AbstractCache(String cacheName) {
+    protected AbstractCache(String cacheName, long timeout) {
         this.cacheName = cacheName;
+        this.timeout = timeout;
         Type superClass = this.getClass().getGenericSuperclass();
         if(superClass instanceof ParameterizedType) {
             Type keyType = ((ParameterizedType) superClass).getActualTypeArguments()[0];
@@ -37,10 +39,11 @@ public abstract class AbstractCache<K, V> implements ICache<K, V> {
     }
 
     @SuppressWarnings("unchecked")
-    protected AbstractCache(String cacheName, Type keyClass, Type valueClass) {
+    protected AbstractCache(String cacheName, long timeout, Class<K> keyClass, Class<V> valueClass) {
         this.cacheName = cacheName;
-        this.keyClass = (Class<K>) keyClass;
-        this.valueClass = (Class<V>) valueClass;
+        this.timeout = timeout;
+        this.keyClass = keyClass;
+        this.valueClass = valueClass;
     }
 
     @Override
@@ -51,5 +54,15 @@ public abstract class AbstractCache<K, V> implements ICache<K, V> {
     @Override
     public boolean isEmpty() {
         return size() <= 0;
+    }
+
+    @Override
+    public void setTimeout(long timeout) {
+        this.timeout = timeout;
+    }
+
+    @Override
+    public long getTimeout() {
+        return timeout;
     }
 }

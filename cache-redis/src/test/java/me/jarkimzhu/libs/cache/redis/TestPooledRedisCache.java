@@ -1,5 +1,6 @@
 package me.jarkimzhu.libs.cache.redis;
 
+import org.junit.Assert;
 import org.junit.Ignore;
 import org.junit.Test;
 import redis.clients.jedis.JedisPool;
@@ -40,19 +41,20 @@ public class TestPooledRedisCache {
     public void testKeySet() {
         Set<Integer> keys = cache.keySet();
         System.out.println(keys);
+        Assert.assertEquals(keys.size(), cache.size());
         System.out.println(keys.size());
         System.out.println(cache.size());
     }
 
     @Test
     public void testValues() {
-        cache.values();
+        System.out.println(cache.values());
     }
 
     private class IntegerObjectCache extends PooledRedisCache<Integer, User> {
 
         public IntegerObjectCache(JedisPool jedisPool) {
-            super(jedisPool);
+            super("ST", jedisPool);
         }
     }
 

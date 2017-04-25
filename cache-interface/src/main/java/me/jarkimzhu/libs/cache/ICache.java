@@ -36,6 +36,10 @@ public interface ICache<K, V> {
     Collection<V> values();
 
     void forEach(BiConsumer<? super K, ? super V> action);
+
+    void setTimeout(long timeout);
+
+    long getTimeout();
 }
 
 interface ICacheObject<V> {

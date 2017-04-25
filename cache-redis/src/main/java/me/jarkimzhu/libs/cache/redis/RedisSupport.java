@@ -3,16 +3,18 @@ package me.jarkimzhu.libs.cache.redis;
 import me.jarkimzhu.libs.utils.CommonUtils;
 import me.jarkimzhu.libs.utils.ObjectUtils;
 import me.jarkimzhu.libs.utils.reflection.ReflectionUtils;
-import redis.clients.jedis.*;
+import redis.clients.jedis.BinaryJedisClusterCommands;
+import redis.clients.jedis.BinaryJedisCommands;
+import redis.clients.jedis.Jedis;
+import redis.clients.jedis.JedisCommands;
 import redis.clients.jedis.exceptions.JedisClusterException;
-import redis.clients.jedis.exceptions.JedisException;
+import redis.clients.util.JedisClusterCRC16;
 import redis.clients.util.SafeEncoder;
 
 import java.io.Closeable;
 import java.io.IOException;
 import java.io.Serializable;
-import java.util.HashSet;
-import java.util.Set;
+import java.util.*;
 
 /**
  * Created on 2017/4/13.
@@ -22,97 +24,98 @@ import java.util.Set;
  */
 public class RedisSupport<K extends Serializable, V extends Serializable> implements Closeable {
 
+    private static final String NS_SEP = ":";
+
+    private String namespace;
+    private byte[] bNamespace;
     private Class<K> keyClass;
     private Class<V> valueClass;
 
     private ThreadLocal<JedisCommands> local = new ThreadLocal<>();
 
-    public RedisSupport(Class<K> keyClass, Class<V> valueClass) {
+    public RedisSupport(String namespace, Class<K> keyClass, Class<V> valueClass) {
+        if(namespace != null) {
+            this.namespace = namespace + NS_SEP;
+            this.bNamespace = SafeEncoder.encode(this.namespace);
+        }
+
         this.keyClass = keyClass;
         this.valueClass = valueClass;
     }
 
     @SuppressWarnings("unchecked")
     public V get(K key) throws IOException, ClassNotFoundException {
+        byte[] redisKey = toRedisKey(key);
+        byte[] redisValue = getRedisValueFromJedisCommands(redisKey);
+        return fromRedisValue(redisValue);
+    }
+
+    private byte[] getRedisValueFromJedisCommands(byte[] redisKey) {
         JedisCommands jedisCommands = getJedisCommands();
-        if (ReflectionUtils.isPrimitiveOrWrapper(key.getClass())) {
-            String sKey = CommonUtils.toString(key);
-            if (ReflectionUtils.isPrimitiveOrWrapper(valueClass)) {
-                String sValue = jedisCommands.get(sKey);
-                return (V) CommonUtils.getValueByType(sValue, valueClass);
-            } else {
-                byte[] bKey = SafeEncoder.encode(sKey);
-                byte[] bValue;
-                if (jedisCommands instanceof BinaryJedisClusterCommands) {
-                    bValue = ((BinaryJedisClusterCommands) jedisCommands).get(bKey);
-                } else {
-                    bValue = ((BinaryJedisCommands) jedisCommands).get(bKey);
-                }
-                return ObjectUtils.deserialize(bValue);
-            }
+        byte[] redisValue;
+        if(jedisCommands instanceof BinaryJedisClusterCommands) {
+            redisValue = ((BinaryJedisClusterCommands) jedisCommands).get(redisKey);
         } else {
-            byte[] bKey = ObjectUtils.serialize(key);
-            byte[] bValue;
-            if (jedisCommands instanceof BinaryJedisClusterCommands) {
-                bValue = ((BinaryJedisClusterCommands) jedisCommands).get(bKey);
-            } else {
-                bValue = ((BinaryJedisCommands) jedisCommands).get(bKey);
-            }
-            return ObjectUtils.deserialize(bValue);
+            redisValue = ((BinaryJedisCommands) jedisCommands).get(redisKey);
+        }
+        return redisValue;
+    }
+
+    public void set(K key, V value) throws IOException {
+        JedisCommands jedisCommands = getJedisCommands();
+
+        byte[] redisKey = toRedisKey(key);
+        byte[] redisValue = toRedisValue(value);
+
+        if (jedisCommands instanceof BinaryJedisClusterCommands) {
+            ((BinaryJedisClusterCommands) jedisCommands).set(redisKey, redisValue);
+        } else {
+            ((BinaryJedisCommands) jedisCommands).set(redisKey, redisValue);
         }
     }
 
-    public void put(K key, V value) throws IOException {
+    public void setex(K key, V value, int seconds) throws IOException {
         JedisCommands jedisCommands = getJedisCommands();
-        if (ReflectionUtils.isPrimitiveOrWrapper(key.getClass())) {
-            String sKey = CommonUtils.toString(key);
-            if (ReflectionUtils.isPrimitiveOrWrapper(value.getClass())) {
-                jedisCommands.set(sKey, CommonUtils.toString(value));
-            } else {
-                byte[] bKey = SafeEncoder.encode(sKey);
-                byte[] bValue = ObjectUtils.serialize(value);
-                if (jedisCommands instanceof BinaryJedisClusterCommands) {
-                    ((BinaryJedisClusterCommands) jedisCommands).set(bKey, bValue);
-                } else {
-                    ((BinaryJedisCommands) jedisCommands).set(bKey, bValue);
-                }
-            }
+
+        byte[] redisKey = toRedisKey(key);
+        byte[] redisValue = toRedisValue(value);
+
+        if (jedisCommands instanceof BinaryJedisClusterCommands) {
+            ((BinaryJedisClusterCommands) jedisCommands).setex(redisKey, seconds, redisValue);
         } else {
-            byte[] bKey = ObjectUtils.serialize(key);
-            byte[] bValue = ObjectUtils.serialize(value);
-            if (jedisCommands instanceof BinaryJedisClusterCommands) {
-                ((BinaryJedisClusterCommands) jedisCommands).set(bKey, bValue);
-            } else {
-                ((BinaryJedisCommands) jedisCommands).set(bKey, bValue);
-            }
+            ((BinaryJedisCommands) jedisCommands).setex(redisKey, seconds, redisValue);
+        }
+    }
+
+    public void expire(K key, int seconds) throws IOException {
+        JedisCommands jedisCommands = getJedisCommands();
+
+        byte[] redisKey = toRedisKey(key);
+        if(jedisCommands instanceof BinaryJedisClusterCommands) {
+            ((BinaryJedisClusterCommands) jedisCommands).expire(redisKey, seconds);
+        } else {
+            ((BinaryJedisCommands) jedisCommands).expire(redisKey, seconds);
         }
     }
 
     public boolean exists(K key) throws IOException {
         JedisCommands jedisCommands = getJedisCommands();
-        if (ReflectionUtils.isPrimitiveOrWrapper(key.getClass())) {
-            return jedisCommands.exists(CommonUtils.toString(key));
+        byte[] redisKey = toRedisKey(key);
+        if (jedisCommands instanceof BinaryJedisClusterCommands) {
+            return ((BinaryJedisClusterCommands) jedisCommands).exists(redisKey);
         } else {
-            byte[] bKey = ObjectUtils.serialize(key);
-            if (jedisCommands instanceof BinaryJedisClusterCommands) {
-                return ((BinaryJedisClusterCommands) jedisCommands).exists(bKey);
-            } else {
-                return ((BinaryJedisCommands) jedisCommands).exists(bKey);
-            }
+            return ((BinaryJedisCommands) jedisCommands).exists(redisKey);
         }
     }
 
     public void del(K key) throws IOException {
         JedisCommands jedisCommands = getJedisCommands();
-        if (ReflectionUtils.isPrimitiveOrWrapper(key.getClass())) {
-            jedisCommands.del(CommonUtils.toString(key));
+
+        byte[] redisKey = toRedisKey(key);
+        if (jedisCommands instanceof BinaryJedisClusterCommands) {
+            ((BinaryJedisClusterCommands) jedisCommands).del(redisKey);
         } else {
-            byte[] bKey = ObjectUtils.serialize(key);
-            if (jedisCommands instanceof BinaryJedisClusterCommands) {
-                ((BinaryJedisClusterCommands) jedisCommands).del(bKey);
-            } else {
-                ((BinaryJedisCommands) jedisCommands).del(bKey);
-            }
+            ((BinaryJedisCommands) jedisCommands).del(redisKey);
         }
     }
 
@@ -121,21 +124,55 @@ public class RedisSupport<K extends Serializable, V extends Serializable> implem
         JedisCommands jedisCommands = getJedisCommands();
         if(jedisCommands instanceof Jedis) {
             Jedis jedis = (Jedis) jedisCommands;
-            if(ReflectionUtils.isPrimitiveOrWrapper(keyClass)) {
-                Set<String> keys = jedis.keys(pattern);
-                Set<K> keySet = new HashSet<>(keys.size());
-                for (String key : keys) {
-                    keySet.add((K) CommonUtils.getValueByType(key, keyClass));
-                }
-                return keySet;
+
+            byte[] redisKey;
+            if(namespace != null) {
+                redisKey = SafeEncoder.encode(namespace + pattern);
             } else {
-                Set<byte[]> keys = jedis.keys(SafeEncoder.encode(pattern));
-                Set<K> keySet = new HashSet<>(keys.size());
-                for (byte[] bytes : keys) {
-                    keySet.add(ObjectUtils.deserialize(bytes));
-                }
-                return keySet;
+                redisKey = SafeEncoder.encode(pattern);
             }
+            Set<byte[]> keys = jedis.keys(redisKey);
+            Set<K> keySet = new HashSet<>(keys.size());
+            for (byte[] bytes : keys) {
+                keySet.add(fromRedisKey(bytes));
+            }
+            return keySet;
+        } else {
+            throw new JedisClusterException("JedisCluster not support this operation");
+        }
+    }
+
+    public Collection<V> values() throws IOException, ClassNotFoundException {
+        JedisCommands jedisCommands = getJedisCommands();
+        if(jedisCommands instanceof Jedis) {
+            Jedis jedis = (Jedis) jedisCommands;
+
+            byte[] redisKey;
+            if(namespace != null) {
+                redisKey = SafeEncoder.encode(namespace + "*");
+            } else {
+                redisKey = SafeEncoder.encode("*");
+            }
+            Set<byte[]> bKeys = jedis.keys(redisKey);
+
+            HashMap<Integer, Set<byte[]>> slotMap = new HashMap<>();
+            for(byte[] bytes : bKeys) {
+                int slot = JedisClusterCRC16.getSlot(bytes);
+                Set<byte[]> slotKeys = slotMap.computeIfAbsent(slot, k1 -> new HashSet<>());
+                slotKeys.add(bytes);
+            }
+
+            ArrayList<V> result = new ArrayList<>();
+            for(Set<byte[]> keySet : slotMap.values()) {
+                int size = keySet.size();
+                byte[][] keys = keySet.toArray(new byte[size][]);
+                byte[][] values = jedis.mget(keys).toArray(new byte[size][]);
+                for(int i = 0; i < size; i++) {
+                    byte[] bValue = values[i];
+                    result.add(fromRedisValue(bValue));
+                }
+            }
+            return result;
         } else {
             throw new JedisClusterException("JedisCluster not support this operation");
         }
@@ -144,9 +181,75 @@ public class RedisSupport<K extends Serializable, V extends Serializable> implem
     public long dbSize() {
         JedisCommands jedisCommands = getJedisCommands();
         if(jedisCommands instanceof Jedis) {
-            return ((Jedis) jedisCommands).dbSize();
+            if(namespace != null) {
+                byte[] redisKey = SafeEncoder.encode(namespace + "*");
+                Set<byte[]> keySet = ((Jedis) jedisCommands).keys(redisKey);
+                return keySet.size();
+            } else {
+                return ((Jedis) jedisCommands).dbSize();
+            }
         } else {
             throw new JedisClusterException("JedisCluster not support this operation");
+        }
+    }
+
+    byte[] toRedisKey(K key) throws IOException {
+        if(ReflectionUtils.isPrimitiveOrWrapper(key.getClass())) {
+            String sKey = CommonUtils.toString(key);
+            if(namespace != null) {
+                return SafeEncoder.encode(namespace + sKey);
+            } else {
+                return SafeEncoder.encode(sKey);
+            }
+        } else {
+            byte[] bKey = ObjectUtils.serialize(key);
+            if(bNamespace != null) {
+                byte[] redisKey = new byte[bNamespace.length + bKey.length];
+                System.arraycopy(bNamespace, 0, redisKey, 0, bNamespace.length);
+                System.arraycopy(bKey, 0, redisKey, bNamespace.length, bKey.length);
+                return redisKey;
+            } else {
+                return bKey;
+            }
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    K fromRedisKey(byte[] redisKey) throws IOException, ClassNotFoundException {
+        if(ReflectionUtils.isPrimitiveOrWrapper(keyClass)) {
+            String sKey = SafeEncoder.encode(redisKey);
+            if(namespace != null) {
+                sKey = sKey.substring(namespace.length());
+            }
+            return (K) CommonUtils.getValueByType(sKey, keyClass);
+        } else {
+            if(namespace != null) {
+                byte[] key = new byte[redisKey.length - bNamespace.length];
+                System.arraycopy(redisKey, bNamespace.length, key, 0, key.length);
+                return ObjectUtils.deserialize(key);
+            } else {
+                return ObjectUtils.deserialize(redisKey);
+            }
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    V fromRedisValue(byte[] bValue) throws IOException, ClassNotFoundException {
+        // TODO 不同Redis数据类型get方式不同
+        if(bValue == null) {
+            return null;
+        } else if(ReflectionUtils.isPrimitiveOrWrapper(valueClass)) {
+            return (V) CommonUtils.getValueByType(SafeEncoder.encode(bValue), valueClass);
+        } else {
+            return ObjectUtils.deserialize(bValue);
+        }
+    }
+
+    private byte[] toRedisValue(V value) throws IOException {
+        if (ReflectionUtils.isPrimitiveOrWrapper(value.getClass())) {
+            return SafeEncoder.encode(CommonUtils.toString(value));
+        } else {
+            return ObjectUtils.serialize(value);
         }
     }
 

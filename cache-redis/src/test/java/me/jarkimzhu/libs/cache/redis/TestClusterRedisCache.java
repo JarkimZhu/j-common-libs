@@ -1,5 +1,6 @@
 package me.jarkimzhu.libs.cache.redis;
 
+import org.junit.Assert;
 import org.junit.Test;
 import redis.clients.jedis.*;
 
@@ -23,7 +24,7 @@ public class TestClusterRedisCache {
         hps.add(hp1);
         hps.add(hp2);
         JedisCluster jedisCluster = new JedisCluster(hps, 500, 1000, 3, "123456", config);
-        cache = new ClusterRedisCache<>(jedisCluster, String.class, String.class);
+        cache = new ClusterRedisCache<>("TGT", jedisCluster, String.class, String.class);
     }
 
     @Test
@@ -38,18 +39,14 @@ public class TestClusterRedisCache {
 
     @Test
     public void testKeys() {
-        System.out.println(cache.keySet().size());
-        System.out.println(cache.size());
-    }
-
-    @Test
-    public void testWrite() {
-        cache.put("JarkimZhu", "hello");
-        cache.remove("JarkimZhu");
+        Assert.assertEquals(cache.keySet().size(), cache.size());
     }
 
     @Test
     public void testValues() {
+        cache.put("JarkimZhu", "yeah");
         System.out.println(cache.values().size());
+        System.out.println(cache.size());
+        cache.remove("JarkimZhu");
     }
 }

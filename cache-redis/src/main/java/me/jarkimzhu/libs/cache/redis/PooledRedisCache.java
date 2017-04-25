@@ -2,14 +2,10 @@ package me.jarkimzhu.libs.cache.redis;
 
 import me.jarkimzhu.libs.cache.AbstractCache;
 import me.jarkimzhu.libs.cache.ICache;
-import me.jarkimzhu.libs.utils.CommonUtils;
-import me.jarkimzhu.libs.utils.ObjectUtils;
-import me.jarkimzhu.libs.utils.reflection.ReflectionUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import redis.clients.jedis.Jedis;
 import redis.clients.jedis.JedisPool;
-import redis.clients.util.SafeEncoder;
 
 import java.io.IOException;
 import java.io.Serializable;
@@ -31,34 +27,40 @@ public class PooledRedisCache<K extends Serializable, V extends Serializable> ex
     private RedisSupport<K, V> support;
 
     public PooledRedisCache(JedisPool jedisPool) {
-        super(null);
+        super(null, -1);
         this.jedisPool = jedisPool;
-        support = new RedisSupport<>(keyClass, valueClass);
+        support = new RedisSupport<>(null, keyClass, valueClass);
     }
 
     public PooledRedisCache(String cacheName, JedisPool jedisPool) {
-        super(cacheName);
+        super(cacheName, -1);
         this.jedisPool = jedisPool;
-        support = new RedisSupport<>(keyClass, valueClass);
+        support = new RedisSupport<>(cacheName, keyClass, valueClass);
     }
 
-    public PooledRedisCache(String cacheName, JedisPool jedisPool, Type keyClass, Type valueClass) {
-        super(cacheName, keyClass, valueClass);
+    public PooledRedisCache(String cacheName, JedisPool jedisPool, Class<K> keyClass, Class<V> valueClass) {
+        super(cacheName, -1, keyClass, valueClass);
         this.jedisPool = jedisPool;
-        support = new RedisSupport<>(this.keyClass, this.valueClass);
+        support = new RedisSupport<>(cacheName, this.keyClass, this.valueClass);
     }
 
-    public PooledRedisCache(JedisPool jedisPool, Type keyClass, Type valueClass) {
-        super(null, keyClass, valueClass);
+    public PooledRedisCache(JedisPool jedisPool, Class<K> keyClass, Class<V> valueClass) {
+        super(null, -1, keyClass, valueClass);
         this.jedisPool = jedisPool;
-        support = new RedisSupport<>(this.keyClass, this.valueClass);
+        support = new RedisSupport<>(null, this.keyClass, this.valueClass);
     }
 
     @Override
     public long size() {
-        try (Jedis jedis = jedisPool.getResource()) {
-            return jedis.dbSize();
+        try (
+                Jedis jedis = jedisPool.getResource();
+                RedisSupport<K, V> s = support.begin(jedis)
+        ) {
+            return s.dbSize();
+        } catch (IOException e) {
+            logger.error(e.getMessage(), e);
         }
+        return -1;
     }
 
     @Override
@@ -105,7 +107,7 @@ public class PooledRedisCache<K extends Serializable, V extends Serializable> ex
                 Jedis jedis = jedisPool.getResource();
                 RedisSupport<K, V> s = support.begin(jedis)
         ) {
-            s.put(key, value);
+            s.set(key, value);
         } catch (IOException e) {
             logger.error(e.getMessage(), e);
         }
@@ -119,7 +121,7 @@ public class PooledRedisCache<K extends Serializable, V extends Serializable> ex
         ) {
             V old = s.get(key);
             if(old == null) {
-                s.put(key, value);
+                s.set(key, value);
             }
             return old;
         } catch (IOException | ClassNotFoundException e) {
@@ -147,22 +149,16 @@ public class PooledRedisCache<K extends Serializable, V extends Serializable> ex
         }
     }
 
-    @SuppressWarnings("unchecked")
     @Override
     public Set<K> keySet() {
-        try (Jedis jedis = jedisPool.getResource()) {
-            if(ReflectionUtils.isPrimitiveOrWrapper(keyClass)) {
-                return (Set<K>) jedis.keys("*");
-            } else {
-                Set<byte[]> keys = jedis.keys(SafeEncoder.encode("*"));
-                Set<K> keySet = new HashSet<>(keys.size());
-                for (byte[] bytes : keys) {
-                    keySet.add(ObjectUtils.deserialize(bytes));
-                }
-                return keySet;
-            }
+        try (
+                Jedis jedis = jedisPool.getResource();
+                RedisSupport<K, V> s = support.begin(jedis)
+        ) {
+            return s.keys("*");
         } catch (IOException | ClassNotFoundException e) {
             logger.error(e.getMessage(), e);
+            e.printStackTrace();
         }
         return null;
     }
@@ -170,22 +166,11 @@ public class PooledRedisCache<K extends Serializable, V extends Serializable> ex
     @SuppressWarnings("unchecked")
     @Override
     public Collection<V> values() {
-        try (Jedis jedis = jedisPool.getResource()) {
-            Set<byte[]> keySet = jedis.keys(SafeEncoder.encode("*"));
-            int size = keySet.size();
-            byte[][] keys = keySet.toArray(new byte[size][]);
-            byte[][] values = jedis.mget(keys).toArray(new byte[size][]);
-
-            Collection<V> result = new ArrayList<>(size);
-            for(int i = 0; i < size; i++) {
-                byte[] bValues = values[i];
-                if(ReflectionUtils.isPrimitiveOrWrapper(valueClass)) {
-                    result.add((V) CommonUtils.getValueByType(SafeEncoder.encode(bValues), valueClass));
-                } else {
-                    result.add(ObjectUtils.deserialize(bValues));
-                }
-            }
-            return result;
+        try (
+                Jedis jedis = jedisPool.getResource();
+                RedisSupport<K, V> s = support.begin(jedis)
+        ) {
+            return s.values();
         } catch (IOException | ClassNotFoundException e) {
             logger.error(e.getMessage(), e);
         }
@@ -206,6 +191,16 @@ public class PooledRedisCache<K extends Serializable, V extends Serializable> ex
             }
         } catch (IOException | ClassNotFoundException e) {
             logger.error(e.getMessage(), e);
+        }
+    }
+
+    @Override
+    public long getTimeout() {
+        long timeout = super.getTimeout();
+        if(timeout > -1) {
+            return timeout / 1000;
+        } else {
+            return timeout;
         }
     }
 }
