@@ -73,6 +73,34 @@ public class RedisSupport<K extends Serializable, V extends Serializable> implem
             ((BinaryJedisCommands) jedisCommands).set(redisKey, redisValue);
         }
     }
+    /**
+     * Set the string value as value of the key. The string can't be longer than 1073741824 bytes (1
+     * GB).
+     * @param key the key
+     * @param value the value
+     * @param nxxx NX|XX, NX -- Only set the key if it does not already exist. XX -- Only set the key
+     *          if it already exist.
+     * @param expx EX|PX, expire time units: EX = seconds; PX = milliseconds
+     * @param time expire time in the units of <code>expx</code>
+     * @return Status code reply
+     */
+    public int set(K key, V value, String nxxx, String expx, long time) throws IOException {
+        JedisCommands jedisCommands = getJedisCommands();
+
+        byte[] redisKey = toRedisKey(key);
+        byte[] redisValue = toRedisValue(value);
+        byte[] bNxxx = SafeEncoder.encode(nxxx);
+        byte[] bExpx = SafeEncoder.encode(expx);
+
+        String result;
+        if (jedisCommands instanceof BinaryJedisClusterCommands) {
+            BinaryJedisClusterCommands commands = (BinaryJedisClusterCommands) jedisCommands;
+            result = commands.set(redisKey, redisValue, bNxxx, bExpx, time);
+        } else {
+            result = ((BinaryJedisCommands) jedisCommands).set(redisKey, redisValue, bNxxx, bExpx, time);
+        }
+        return "OK".equalsIgnoreCase(result) ? 1 : 0;
+    }
 
     public void setex(K key, V value, int seconds) throws IOException {
         JedisCommands jedisCommands = getJedisCommands();
@@ -85,6 +113,25 @@ public class RedisSupport<K extends Serializable, V extends Serializable> implem
         } else {
             ((BinaryJedisCommands) jedisCommands).setex(redisKey, seconds, redisValue);
         }
+    }
+
+    public int setnx(K key, V value, int seconds) throws IOException {
+        if(seconds > -1) {
+            return set(key, value, "NX", "EX", seconds);
+        }
+
+        JedisCommands jedisCommands = getJedisCommands();
+
+        byte[] redisKey = toRedisKey(key);
+        byte[] redisValue = toRedisValue(value);
+
+        long result;
+        if (jedisCommands instanceof BinaryJedisClusterCommands) {
+            result = ((BinaryJedisClusterCommands) jedisCommands).setnx(redisKey, redisValue);
+        } else {
+            result = ((BinaryJedisCommands) jedisCommands).setnx(redisKey, redisValue);
+        }
+        return (int) result;
     }
 
     public void expire(K key, int seconds) throws IOException {
@@ -193,7 +240,7 @@ public class RedisSupport<K extends Serializable, V extends Serializable> implem
         }
     }
 
-    byte[] toRedisKey(K key) throws IOException {
+    protected byte[] toRedisKey(K key) throws IOException {
         if(ReflectionUtils.isPrimitiveOrWrapper(key.getClass())) {
             String sKey = CommonUtils.toString(key);
             if(namespace != null) {
@@ -215,7 +262,7 @@ public class RedisSupport<K extends Serializable, V extends Serializable> implem
     }
 
     @SuppressWarnings("unchecked")
-    K fromRedisKey(byte[] redisKey) throws IOException, ClassNotFoundException {
+    private K fromRedisKey(byte[] redisKey) throws IOException, ClassNotFoundException {
         if(ReflectionUtils.isPrimitiveOrWrapper(keyClass)) {
             String sKey = SafeEncoder.encode(redisKey);
             if(namespace != null) {
@@ -234,7 +281,7 @@ public class RedisSupport<K extends Serializable, V extends Serializable> implem
     }
 
     @SuppressWarnings("unchecked")
-    V fromRedisValue(byte[] bValue) throws IOException, ClassNotFoundException {
+    private V fromRedisValue(byte[] bValue) throws IOException, ClassNotFoundException {
         // TODO 不同Redis数据类型get方式不同
         if(bValue == null) {
             return null;
@@ -253,7 +300,7 @@ public class RedisSupport<K extends Serializable, V extends Serializable> implem
         }
     }
 
-    private JedisCommands getJedisCommands() {
+    protected JedisCommands getJedisCommands() {
         JedisCommands jedisCommands = local.get();
         if (jedisCommands == null) {
             throw new RuntimeException("Please call begin at first");

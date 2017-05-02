@@ -1,11 +1,22 @@
+/*
+ * Copyright (c) 2014-2016. JarkimZhu
+ * This software can not be used privately without permission
+ */
+
 package me.jarkimzhu.libs.utils.reflection;
+
+import sun.reflect.generics.reflectiveObjects.TypeVariableImpl;
 
 import java.lang.reflect.*;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 
 /**
+ * Created on 2017/5/2.
+ *
  * @author JarkimZhu
+ * @since JDK1.8
  */
 public abstract class ReflectionUtils {
 
@@ -71,16 +82,25 @@ public abstract class ReflectionUtils {
     public static Type[] getGenericTypes(Class<?> clazz) {
         ArrayList<Type> types = new ArrayList<>();
         Type genType = clazz.getGenericSuperclass();
-        if (genType instanceof ParameterizedType) {
-            Collections.addAll(types, ((ParameterizedType) genType).getActualTypeArguments());
-        }
+        types.addAll(getAndCheckActualTypeArguments(genType));
         Type[] ifaces = clazz.getGenericInterfaces();
         for (Type iface : ifaces) {
-            if (iface instanceof ParameterizedType) {
-                Collections.addAll(types, ((ParameterizedType) iface).getActualTypeArguments());
-            }
+            types.addAll(getAndCheckActualTypeArguments(iface));
         }
         return types.toArray(new Type[types.size()]);
+    }
+
+    private static Collection<Type> getAndCheckActualTypeArguments(Type genType) {
+        ArrayList<Type> types = new ArrayList<>();
+        if (genType instanceof ParameterizedType) {
+            Type[] actualTypeArguments = ((ParameterizedType) genType).getActualTypeArguments();
+            for (Type type : actualTypeArguments) {
+                if(!(type instanceof TypeVariableImpl)) {
+                    types.add(type);
+                }
+            }
+        }
+        return types;
     }
 
     public static boolean isFramework(Type type) {

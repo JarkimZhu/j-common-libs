@@ -1,7 +1,13 @@
-package me.jarkimzhu.libs.cache.redis;
+/*
+ * Copyright (c) 2014-2017. JarkimZhu
+ * This software can not be used privately without permission
+ */
+
+package me.jarkimzhu.libs.cache.redis.cluster;
 
 import me.jarkimzhu.libs.cache.AbstractCache;
 import me.jarkimzhu.libs.cache.ICache;
+import me.jarkimzhu.libs.cache.redis.RedisSupport;
 import me.jarkimzhu.libs.cache.redis.utils.BulkReplyParser;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -34,6 +40,12 @@ public class ClusterRedisCache<K extends Serializable, V extends Serializable> e
         support = new RedisSupport<>(null, keyClass, valueClass);
     }
 
+    public ClusterRedisCache(JedisCluster jedisCluster, Class<K> keyClass, Class<V> valueClass) {
+        super(null, -1, keyClass, valueClass);
+        this.jedisCluster = jedisCluster;
+        support = new RedisSupport<>(null, this.keyClass, this.valueClass);
+    }
+
     public ClusterRedisCache(String cacheName, JedisCluster jedisCluster) {
         super(cacheName, -1);
         this.jedisCluster = jedisCluster;
@@ -44,12 +56,6 @@ public class ClusterRedisCache<K extends Serializable, V extends Serializable> e
         super(cacheName, -1, keyClass, valueClass);
         this.jedisCluster = jedisCluster;
         support = new RedisSupport<>(cacheName, this.keyClass, this.valueClass);
-    }
-
-    public ClusterRedisCache(JedisCluster jedisCluster, Class<K> keyClass, Class<V> valueClass) {
-        super(null, -1, keyClass, valueClass);
-        this.jedisCluster = jedisCluster;
-        support = new RedisSupport<>(null, this.keyClass, this.valueClass);
     }
 
     @Override
@@ -125,7 +131,7 @@ public class ClusterRedisCache<K extends Serializable, V extends Serializable> e
         try (RedisSupport<K, V> s = support.begin(jedisCluster)) {
             V old = s.get(key);
             if(old == null) {
-                s.set(key, value);
+                s.setnx(key, value, (int) getTimeout());
             }
             return old;
         } catch (IOException | ClassNotFoundException e) {

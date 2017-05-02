@@ -1,7 +1,7 @@
 package me.jarkimzhu.libs.cache.redis;
 
+import me.jarkimzhu.libs.cache.redis.pool.PoolRedisCache;
 import org.junit.Assert;
-import org.junit.Ignore;
 import org.junit.Test;
 import redis.clients.jedis.JedisPool;
 import redis.clients.jedis.JedisPoolConfig;
@@ -17,24 +17,30 @@ import java.util.Set;
  * @author JarkimZhu
  * @since jdk1.8
  */
-public class TestPooledRedisCache {
+public class TestPoolRedisCache {
 
-    private PooledRedisCache<Integer, User> cache;
+    private PoolRedisCache<Integer, User> cache;
 
-    public TestPooledRedisCache() {
+    public TestPoolRedisCache() {
         JedisPoolConfig config = new JedisPoolConfig();
-        JedisPool jedisPool = new JedisPool(config, "10.2.108.4", 7001, Protocol.DEFAULT_TIMEOUT, "123456");
+        JedisPool jedisPool = new JedisPool(config, "10.2.108.4", 7002, Protocol.DEFAULT_TIMEOUT, "123456");
         cache = new IntegerObjectCache(jedisPool);
     }
 
     @Test
-    public void testSize() {
+    public void testSize() throws InterruptedException {
         System.out.println(cache.size());
         cache.put(1, new User());
         System.out.println(cache.get(1));
         System.out.println(cache.size());
         cache.remove(1);
         System.out.println(cache.size());
+    }
+
+    @Test
+    public void testPutIfAbsent() {
+        System.out.println(cache.putIfAbsent(1, new User()));
+        System.out.println(cache.putIfAbsent(1, new User()));
     }
 
     @Test
@@ -51,10 +57,11 @@ public class TestPooledRedisCache {
         System.out.println(cache.values());
     }
 
-    private class IntegerObjectCache extends PooledRedisCache<Integer, User> {
+    private class IntegerObjectCache extends PoolRedisCache<Integer, User> {
 
         public IntegerObjectCache(JedisPool jedisPool) {
-            super("ST", jedisPool);
+            super("JarkimZhu", jedisPool);
+            setTimeout(5000);
         }
     }
 

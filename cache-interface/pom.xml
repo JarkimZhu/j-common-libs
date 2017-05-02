@@ -11,4 +11,11 @@
 
     <artifactId>cache-interface</artifactId>
 
+    <dependencies>
+        <dependency>
+            <groupId>me.jarkimzhu.libs</groupId>
+            <artifactId>common-utils</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+    </dependencies>
 </project>

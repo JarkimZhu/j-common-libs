@@ -1,5 +1,6 @@
 package me.jarkimzhu.libs.cache.redis;
 
+import me.jarkimzhu.libs.cache.redis.cluster.ClusterRedisCache;
 import org.junit.Assert;
 import org.junit.Test;
 import redis.clients.jedis.*;

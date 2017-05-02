@@ -1,3 +1,8 @@
+/*
+ * Copyright (c) 2014-2016. JarkimZhu
+ * This software can not be used privately without permission
+ */
+
 package me.jarkimzhu.libs.utils;
 
 import com.alibaba.fastjson.JSON;

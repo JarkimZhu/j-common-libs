@@ -1,7 +1,12 @@
-package me.jarkimzhu.libs.cache.redis;
+/*
+ * Copyright (c) 2014-2017. JarkimZhu
+ * This software can not be used privately without permission
+ */
 
-import me.jarkimzhu.libs.cache.AbstractCache;
+package me.jarkimzhu.libs.cache.redis.pool;
+
 import me.jarkimzhu.libs.cache.ICache;
+import me.jarkimzhu.libs.cache.redis.RedisSupport;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import redis.clients.jedis.Jedis;
@@ -9,8 +14,9 @@ import redis.clients.jedis.JedisPool;
 
 import java.io.IOException;
 import java.io.Serializable;
-import java.lang.reflect.Type;
-import java.util.*;
+import java.util.Collection;
+import java.util.Objects;
+import java.util.Set;
 import java.util.function.BiConsumer;
 
 /**
@@ -19,41 +25,34 @@ import java.util.function.BiConsumer;
  * @author JarkimZhu
  * @since jdk1.8
  */
-public class PooledRedisCache<K extends Serializable, V extends Serializable> extends AbstractCache<K, V> implements ICache<K, V> {
+public class PoolRedisCache<K extends Serializable, V extends Serializable> extends AbstractPooledRedisCache<K, V> implements ICache<K, V> {
 
-    private static final Logger logger = LoggerFactory.getLogger(PooledRedisCache.class);
+    private static final Logger logger = LoggerFactory.getLogger(PoolRedisCache.class);
 
-    private JedisPool jedisPool;
-    private RedisSupport<K, V> support;
-
-    public PooledRedisCache(JedisPool jedisPool) {
+    public PoolRedisCache(JedisPool jedisPool) {
         super(null, -1);
-        this.jedisPool = jedisPool;
-        support = new RedisSupport<>(null, keyClass, valueClass);
+        init(getCacheName(), jedisPool, new RedisSupport<>(getCacheName(), keyClass, valueClass));
     }
 
-    public PooledRedisCache(String cacheName, JedisPool jedisPool) {
-        super(cacheName, -1);
-        this.jedisPool = jedisPool;
-        support = new RedisSupport<>(cacheName, keyClass, valueClass);
-    }
-
-    public PooledRedisCache(String cacheName, JedisPool jedisPool, Class<K> keyClass, Class<V> valueClass) {
-        super(cacheName, -1, keyClass, valueClass);
-        this.jedisPool = jedisPool;
-        support = new RedisSupport<>(cacheName, this.keyClass, this.valueClass);
-    }
-
-    public PooledRedisCache(JedisPool jedisPool, Class<K> keyClass, Class<V> valueClass) {
+    public PoolRedisCache(JedisPool jedisPool, Class<K> keyClass, Class<V> valueClass) {
         super(null, -1, keyClass, valueClass);
-        this.jedisPool = jedisPool;
-        support = new RedisSupport<>(null, this.keyClass, this.valueClass);
+        init(getCacheName(), jedisPool, new RedisSupport<>(getCacheName(), keyClass, valueClass));
+    }
+
+    public PoolRedisCache(String cacheName, JedisPool jedisPool) {
+        super(cacheName, -1);
+        init(getCacheName(), jedisPool, new RedisSupport<>(getCacheName(), keyClass, valueClass));
+    }
+
+    public PoolRedisCache(String cacheName, JedisPool jedisPool, Class<K> keyClass, Class<V> valueClass) {
+        super(cacheName, -1, keyClass, valueClass);
+        init(getCacheName(), jedisPool, new RedisSupport<>(getCacheName(), keyClass, valueClass));
     }
 
     @Override
     public long size() {
         try (
-                Jedis jedis = jedisPool.getResource();
+                Jedis jedis = getJedis();
                 RedisSupport<K, V> s = support.begin(jedis)
         ) {
             return s.dbSize();
@@ -66,7 +65,7 @@ public class PooledRedisCache<K extends Serializable, V extends Serializable> ex
     @Override
     public boolean containsKey(K key) {
         try (
-                Jedis jedis = jedisPool.getResource();
+                Jedis jedis = getJedis();
                 RedisSupport<K, V> s = support.begin(jedis)
         ) {
             return s.exists(key);
@@ -91,7 +90,7 @@ public class PooledRedisCache<K extends Serializable, V extends Serializable> ex
     @Override
     public V get(K key) {
         try (
-                Jedis jedis = jedisPool.getResource();
+                Jedis jedis = getJedis();
                 RedisSupport<K, V> s = support.begin(jedis)
         ) {
             return s.get(key);
@@ -104,10 +103,15 @@ public class PooledRedisCache<K extends Serializable, V extends Serializable> ex
     @Override
     public void put(K key, V value) {
         try (
-                Jedis jedis = jedisPool.getResource();
+                Jedis jedis = getJedis();
                 RedisSupport<K, V> s = support.begin(jedis)
         ) {
-            s.set(key, value);
+            int timeout = (int) getTimeout();
+            if(timeout > -1) {
+                s.setex(key, value, timeout);
+            } else {
+                s.set(key, value);
+            }
         } catch (IOException e) {
             logger.error(e.getMessage(), e);
         }
@@ -116,12 +120,12 @@ public class PooledRedisCache<K extends Serializable, V extends Serializable> ex
     @Override
     public V putIfAbsent(K key, V value) {
         try (
-                Jedis jedis = jedisPool.getResource();
+                Jedis jedis = getJedis();
                 RedisSupport<K, V> s = support.begin(jedis)
         ) {
             V old = s.get(key);
             if(old == null) {
-                s.set(key, value);
+                s.setnx(key, value, (int) getTimeout());
             }
             return old;
         } catch (IOException | ClassNotFoundException e) {
@@ -133,7 +137,7 @@ public class PooledRedisCache<K extends Serializable, V extends Serializable> ex
     @Override
     public void remove(K key) {
         try (
-                Jedis jedis = jedisPool.getResource();
+                Jedis jedis = getJedis();
                 RedisSupport<K, V> s = support.begin(jedis)
         ) {
             s.del(key);
@@ -144,7 +148,7 @@ public class PooledRedisCache<K extends Serializable, V extends Serializable> ex
 
     @Override
     public void clear() {
-        try (Jedis jedis = jedisPool.getResource()) {
+        try (Jedis jedis = getJedis()) {
             jedis.flushDB();
         }
     }
@@ -152,7 +156,7 @@ public class PooledRedisCache<K extends Serializable, V extends Serializable> ex
     @Override
     public Set<K> keySet() {
         try (
-                Jedis jedis = jedisPool.getResource();
+                Jedis jedis = getJedis();
                 RedisSupport<K, V> s = support.begin(jedis)
         ) {
             return s.keys("*");
@@ -167,7 +171,7 @@ public class PooledRedisCache<K extends Serializable, V extends Serializable> ex
     @Override
     public Collection<V> values() {
         try (
-                Jedis jedis = jedisPool.getResource();
+                Jedis jedis = getJedis();
                 RedisSupport<K, V> s = support.begin(jedis)
         ) {
             return s.values();
@@ -182,7 +186,7 @@ public class PooledRedisCache<K extends Serializable, V extends Serializable> ex
         Objects.requireNonNull(action);
         Set<K> keys = keySet();
         try (
-                Jedis jedis = jedisPool.getResource();
+                Jedis jedis = getJedis();
                 RedisSupport<K, V> s = support.begin(jedis)
         ) {
             for (K key : keys) {
@@ -191,16 +195,6 @@ public class PooledRedisCache<K extends Serializable, V extends Serializable> ex
             }
         } catch (IOException | ClassNotFoundException e) {
             logger.error(e.getMessage(), e);
-        }
-    }
-
-    @Override
-    public long getTimeout() {
-        long timeout = super.getTimeout();
-        if(timeout > -1) {
-            return timeout / 1000;
-        } else {
-            return timeout;
         }
     }
 }

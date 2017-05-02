@@ -1,5 +1,6 @@
 package me.jarkimzhu.libs.cache;
 
+import me.jarkimzhu.libs.utils.reflection.ReflectionUtils;
 import sun.reflect.generics.reflectiveObjects.TypeVariableImpl;
 
 import java.lang.reflect.ParameterizedType;
@@ -23,16 +24,11 @@ public abstract class AbstractCache<K, V> implements ICache<K, V> {
     protected AbstractCache(String cacheName, long timeout) {
         this.cacheName = cacheName;
         this.timeout = timeout;
-        Type superClass = this.getClass().getGenericSuperclass();
-        if(superClass instanceof ParameterizedType) {
-            Type keyType = ((ParameterizedType) superClass).getActualTypeArguments()[0];
-            Type valueType = ((ParameterizedType) superClass).getActualTypeArguments()[1];
-            if(keyType instanceof TypeVariableImpl || valueType instanceof TypeVariableImpl) {
-                throw new IllegalArgumentException("Internal error: AbstractCache constructed without actual type information");
-            } else {
-                this.keyClass = (Class<K>) keyType;
-                this.valueClass = (Class<V>) valueType;
-            }
+
+        Type[] types = ReflectionUtils.getGenericTypes(getClass());
+        if(types.length >= 2) {
+            this.keyClass = (Class<K>) types[0];
+            this.valueClass = (Class<V>) types[1];
         } else {
             throw new IllegalArgumentException("Internal error: AbstractCache not extends ParameterizedType");
         }
@@ -54,6 +50,11 @@ public abstract class AbstractCache<K, V> implements ICache<K, V> {
     @Override
     public boolean isEmpty() {
         return size() <= 0;
+    }
+
+    @Override
+    public void destroy() {
+        clear();
     }
 
     @Override

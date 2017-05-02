@@ -1,14 +1,12 @@
 package me.jarkimzhu.libs.cache.redis;
 
+import me.jarkimzhu.libs.cache.redis.cluster.ClusterRedisCache;
 import org.junit.Test;
 import redis.clients.jedis.HostAndPort;
 import redis.clients.jedis.JedisCluster;
 import redis.clients.jedis.JedisPoolConfig;
-import sun.security.krb5.internal.Ticket;
 
-import java.io.IOException;
 import java.io.Serializable;
-import java.util.Arrays;
 import java.util.Date;
 import java.util.HashSet;
 import java.util.Set;

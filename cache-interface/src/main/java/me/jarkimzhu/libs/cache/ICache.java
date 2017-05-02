@@ -40,6 +40,8 @@ public interface ICache<K, V> {
     void setTimeout(long timeout);
 
     long getTimeout();
+
+    void destroy();
 }
 
 interface ICacheObject<V> {
