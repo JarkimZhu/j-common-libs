@@ -15,6 +15,7 @@ import redis.clients.jedis.JedisPool;
 import java.io.IOException;
 import java.io.Serializable;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Objects;
 import java.util.Set;
 import java.util.function.BiConsumer;
@@ -178,6 +179,11 @@ public class PoolRedisCache<K extends Serializable, V extends Serializable> exte
         } catch (IOException | ClassNotFoundException e) {
             logger.error(e.getMessage(), e);
         }
+        return Collections.emptyList();
+    }
+
+    @Override
+    public Collection<V> query(Object param) {
         return null;
     }
 

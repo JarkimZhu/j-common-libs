@@ -3,6 +3,8 @@ package me.jarkimzhu.libs.cache.redis;
 import me.jarkimzhu.libs.utils.CommonUtils;
 import me.jarkimzhu.libs.utils.ObjectUtils;
 import me.jarkimzhu.libs.utils.reflection.ReflectionUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import redis.clients.jedis.BinaryJedisClusterCommands;
 import redis.clients.jedis.BinaryJedisCommands;
 import redis.clients.jedis.Jedis;
@@ -24,6 +26,7 @@ import java.util.*;
  */
 public class RedisSupport<K extends Serializable, V extends Serializable> implements Closeable {
 
+    private static final Logger logger = LoggerFactory.getLogger(RedisSupport.class);
     private static final String NS_SEP = ":";
 
     private String namespace;
@@ -216,7 +219,11 @@ public class RedisSupport<K extends Serializable, V extends Serializable> implem
                 byte[][] values = jedis.mget(keys).toArray(new byte[size][]);
                 for(int i = 0; i < size; i++) {
                     byte[] bValue = values[i];
-                    result.add(fromRedisValue(bValue));
+                    try {
+                        result.add(fromRedisValue(bValue));
+                    } catch (IOException e) {
+                        logger.warn(e.getMessage(), e);
+                    }
                 }
             }
             return result;

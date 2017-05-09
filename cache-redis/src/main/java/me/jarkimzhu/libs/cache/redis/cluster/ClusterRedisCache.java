@@ -201,6 +201,11 @@ public class ClusterRedisCache<K extends Serializable, V extends Serializable> e
     }
 
     @Override
+    public Collection<V> query(Object param) {
+        return null;
+    }
+
+    @Override
     public void forEach(BiConsumer<? super K, ? super V> action) {
         throw new JedisClusterException("No way to dispatch this command to Redis Cluster.");
     }
