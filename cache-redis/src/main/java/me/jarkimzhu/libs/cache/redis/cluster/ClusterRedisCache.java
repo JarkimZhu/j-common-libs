@@ -194,15 +194,23 @@ public class ClusterRedisCache<K extends Serializable, V extends Serializable> e
                 }
             } catch(Exception e){
                 logger.error("Getting keys error: {}", e);
-                e.printStackTrace();
             }
         }
         return result;
     }
 
     @Override
-    public Collection<V> query(Object param) {
-        return null;
+    public Map<K, V> query(Object param) {
+        try (RedisSupport<K, V> s = support.begin(jedisCluster)) {
+            if(param instanceof Serializable) {
+                return s.query((Serializable) param);
+            } else {
+                throw new IllegalArgumentException("Only support Serializable param to Redis.");
+            }
+        } catch (IOException | ClassNotFoundException e) {
+            logger.error(e.getMessage(), e);
+        }
+        return Collections.emptyMap();
     }
 
     @Override

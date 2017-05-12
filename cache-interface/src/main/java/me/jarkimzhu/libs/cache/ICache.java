@@ -1,6 +1,7 @@
 package me.jarkimzhu.libs.cache;
 
 import java.util.Collection;
+import java.util.Map;
 import java.util.Set;
 import java.util.function.BiConsumer;
 
@@ -35,7 +36,7 @@ public interface ICache<K, V> {
 
     Collection<V> values();
 
-    Collection<V> query(Object param);
+    Map<K, V> query(Object param);
 
     void forEach(BiConsumer<? super K, ? super V> action);
 
@@ -44,20 +45,4 @@ public interface ICache<K, V> {
     long getTimeout();
 
     void destroy();
-}
-
-interface ICacheObject<V> {
-    V getData();
-
-    void setData(V data);
-
-    void settle();
-
-    void unsettle();
-
-    void change();
-
-    boolean isChange();
-
-    boolean isDirty();
 }

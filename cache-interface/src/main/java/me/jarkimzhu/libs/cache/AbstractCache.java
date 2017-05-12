@@ -1,9 +1,7 @@
 package me.jarkimzhu.libs.cache;
 
 import me.jarkimzhu.libs.utils.reflection.ReflectionUtils;
-import sun.reflect.generics.reflectiveObjects.TypeVariableImpl;
 
-import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 
 /**
@@ -17,8 +15,12 @@ public abstract class AbstractCache<K, V> implements ICache<K, V> {
     protected Class<K> keyClass;
     protected Class<V> valueClass;
 
-    private String cacheName;
+    private final String cacheName;
     private long timeout;
+
+    AbstractCache(String cacheName) {
+        this.cacheName = cacheName;
+    }
 
     @SuppressWarnings("unchecked")
     protected AbstractCache(String cacheName, long timeout) {

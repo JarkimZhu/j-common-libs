@@ -27,6 +27,12 @@ public class HashRedisSupport<K extends Serializable, F extends Serializable, V 
         this.fieldClass = filedClass;
     }
 
+    @Override
+    public HashRedisSupport<K, F, V> begin(JedisCommands jedisCommands) {
+        local.set(jedisCommands);
+        return this;
+    }
+
     public long hlen(K key) throws IOException {
         JedisCommands jedisCommands = getJedisCommands();
 

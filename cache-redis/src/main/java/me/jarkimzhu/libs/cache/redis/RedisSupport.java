@@ -34,7 +34,7 @@ public class RedisSupport<K extends Serializable, V extends Serializable> implem
     private Class<K> keyClass;
     private Class<V> valueClass;
 
-    private ThreadLocal<JedisCommands> local = new ThreadLocal<>();
+    protected ThreadLocal<JedisCommands> local = new ThreadLocal<>();
 
     public RedisSupport(String namespace, Class<K> keyClass, Class<V> valueClass) {
         if(namespace != null) {
@@ -192,17 +192,12 @@ public class RedisSupport<K extends Serializable, V extends Serializable> implem
         }
     }
 
-    public Collection<V> values() throws IOException, ClassNotFoundException {
+    public <E extends Serializable> Map<K, V> query(E param) throws IOException, ClassNotFoundException {
         JedisCommands jedisCommands = getJedisCommands();
         if(jedisCommands instanceof Jedis) {
             Jedis jedis = (Jedis) jedisCommands;
 
-            byte[] redisKey;
-            if(namespace != null) {
-                redisKey = SafeEncoder.encode(namespace + "*");
-            } else {
-                redisKey = SafeEncoder.encode("*");
-            }
+            byte[] redisKey = toRedisKey(param);
             Set<byte[]> bKeys = jedis.keys(redisKey);
 
             HashMap<Integer, Set<byte[]>> slotMap = new HashMap<>();
@@ -212,7 +207,7 @@ public class RedisSupport<K extends Serializable, V extends Serializable> implem
                 slotKeys.add(bytes);
             }
 
-            ArrayList<V> result = new ArrayList<>();
+            HashMap<K, V> result = new HashMap<>(bKeys.size());
             for(Set<byte[]> keySet : slotMap.values()) {
                 int size = keySet.size();
                 byte[][] keys = keySet.toArray(new byte[size][]);
@@ -220,7 +215,7 @@ public class RedisSupport<K extends Serializable, V extends Serializable> implem
                 for(int i = 0; i < size; i++) {
                     byte[] bValue = values[i];
                     try {
-                        result.add(fromRedisValue(bValue));
+                        result.put(fromRedisKey(keys[i]), fromRedisValue(bValue));
                     } catch (IOException e) {
                         logger.warn(e.getMessage(), e);
                     }
@@ -230,6 +225,10 @@ public class RedisSupport<K extends Serializable, V extends Serializable> implem
         } else {
             throw new JedisClusterException("JedisCluster not support this operation");
         }
+    }
+
+    public Collection<V> values() throws IOException, ClassNotFoundException {
+        return query("*").values();
     }
 
     public long dbSize() {
@@ -247,7 +246,7 @@ public class RedisSupport<K extends Serializable, V extends Serializable> implem
         }
     }
 
-    protected byte[] toRedisKey(K key) throws IOException {
+    protected <E extends Serializable> byte[] toRedisKey(E key) throws IOException {
         if(ReflectionUtils.isPrimitiveOrWrapper(key.getClass())) {
             String sKey = CommonUtils.toString(key);
             if(namespace != null) {
@@ -255,6 +254,8 @@ public class RedisSupport<K extends Serializable, V extends Serializable> implem
             } else {
                 return SafeEncoder.encode(sKey);
             }
+        } else if(key instanceof byte[]) {
+            return (byte[]) key;
         } else {
             byte[] bKey = ObjectUtils.serialize(key);
             if(bNamespace != null) {
