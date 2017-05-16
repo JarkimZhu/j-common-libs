@@ -70,7 +70,7 @@ public class ClusterRedisCache<K extends Serializable, V extends Serializable> e
                 String role = result.get("Replication").get("role");
                 if("slave".equalsIgnoreCase(role)) {
                     try (RedisSupport<K, V> s = support.begin(jedis)) {
-                        size += s.dbSize();
+                        size += s.size();
                     }
                 }
             } catch(Exception e){
@@ -156,7 +156,7 @@ public class ClusterRedisCache<K extends Serializable, V extends Serializable> e
 
     @Override
     public Set<K> keySet() {
-        Set<K> keys = new TreeSet<>();
+        HashSet<K> keys = new HashSet<>();
         Map<String, JedisPool> clusterNodes = jedisCluster.getClusterNodes();
         for(String k : clusterNodes.keySet()){
             logger.debug("Getting keys from: {}", k);

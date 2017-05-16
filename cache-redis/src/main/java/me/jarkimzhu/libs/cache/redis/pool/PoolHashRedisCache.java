@@ -12,7 +12,7 @@ import me.jarkimzhu.libs.cache.redis.utils.JedisUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import redis.clients.jedis.Jedis;
-import redis.clients.jedis.JedisPool;
+import redis.clients.util.Pool;
 
 import java.io.IOException;
 import java.io.Serializable;
@@ -32,35 +32,35 @@ public class PoolHashRedisCache<F extends Serializable, V extends Serializable> 
     private static final Logger logger = LoggerFactory.getLogger(PoolHashRedisCache.class);
 
     private Class<F> fieldClass;
-    private JedisPool jedisPool;
+    private Pool<Jedis> jedisPool;
     private int database;
     private HashRedisSupport<String, F, V> support;
 
     @SuppressWarnings("unchecked")
-    public PoolHashRedisCache(JedisPool jedisPool) {
+    public PoolHashRedisCache(Pool<Jedis> jedisPool) {
         super(null, -1);
         init(jedisPool);
     }
 
     @SuppressWarnings("unchecked")
-    public PoolHashRedisCache(JedisPool jedisPool, Class<F> fieldClass, Class<V> valueClass) {
+    public PoolHashRedisCache(Pool<Jedis> jedisPool, Class<F> fieldClass, Class<V> valueClass) {
         super(null, -1, fieldClass, valueClass);
         init(jedisPool);
     }
 
     @SuppressWarnings("unchecked")
-    public PoolHashRedisCache(String cacheName, JedisPool jedisPool) {
+    public PoolHashRedisCache(String cacheName, Pool<Jedis> jedisPool) {
         super(cacheName, -1);
         init(jedisPool);
     }
 
     @SuppressWarnings("unchecked")
-    public PoolHashRedisCache(String cacheName, JedisPool jedisPool, Class<F> fieldClass, Class<V> valueClass) {
+    public PoolHashRedisCache(String cacheName, Pool<Jedis> jedisPool, Class<F> fieldClass, Class<V> valueClass) {
         super(cacheName, -1, fieldClass, valueClass);
         init(jedisPool);
     }
 
-    private void init(JedisPool jedisPool) {
+    private void init(Pool<Jedis> jedisPool) {
         this.jedisPool = jedisPool;
         this.support = new HashRedisSupport<>(null, String.class, fieldClass, valueClass);
     }

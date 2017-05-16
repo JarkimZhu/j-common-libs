@@ -7,6 +7,7 @@ package me.jarkimzhu.libs.cache.local;
 
 import me.jarkimzhu.libs.cache.AbstractFieldCache;
 import me.jarkimzhu.libs.cache.IFieldCache;
+import me.jarkimzhu.libs.cache.utils.CacheUtils;
 import sun.reflect.generics.reflectiveObjects.NotImplementedException;
 
 import java.util.*;
@@ -165,6 +166,14 @@ public class MapFieldCache<K, F, V> extends AbstractFieldCache<K, F, V> implemen
     }
 
     @Override
+    public Set<F> fieldSet(K key) {
+        if(store.containsKey(key)) {
+            return store.get(key).keySet();
+        }
+        return Collections.emptySet();
+    }
+
+    @Override
     public Collection<V> values(K key) {
         if(store.containsKey(key)) {
             return store.get(key).values();
@@ -174,7 +183,10 @@ public class MapFieldCache<K, F, V> extends AbstractFieldCache<K, F, V> implemen
 
     @Override
     public Map<F, V> queryFields(K key, Object param) {
-        //TODO implement
-        throw new NotImplementedException();
+        if(store.containsKey(key)) {
+            Map<F, V> all = store.get(key);
+            return CacheUtils.filter(all, param);
+        }
+        return Collections.emptyMap();
     }
 }

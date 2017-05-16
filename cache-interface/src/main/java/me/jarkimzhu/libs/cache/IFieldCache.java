@@ -7,6 +7,7 @@ package me.jarkimzhu.libs.cache;
 
 import java.util.Collection;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * Created on 2017/5/10.
@@ -30,6 +31,8 @@ public interface IFieldCache<K, F, V> extends ICache<K, V> {
     void remove(K key, F field);
 
     void clear(K key);
+
+    Set<F> fieldSet(K key);
 
     Collection<V> values(K key);
 

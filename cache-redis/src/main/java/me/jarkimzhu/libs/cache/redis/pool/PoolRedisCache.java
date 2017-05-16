@@ -13,7 +13,7 @@ import me.jarkimzhu.libs.utils.CommonUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import redis.clients.jedis.Jedis;
-import redis.clients.jedis.JedisPool;
+import redis.clients.util.Pool;
 
 import java.io.IOException;
 import java.io.Serializable;
@@ -30,33 +30,33 @@ public class PoolRedisCache<K extends Serializable, V extends Serializable> exte
 
     private static final Logger logger = LoggerFactory.getLogger(PoolRedisCache.class);
 
-    private static final Set<String> DB_INDEX = new HashSet<>(16);
+    private static final HashSet<String> DB_INDEX = new HashSet<>(16);
 
-    private JedisPool jedisPool;
+    private Pool<Jedis> jedisPool;
     private int database;
     private RedisSupport<K, V> support;
 
-    public PoolRedisCache(JedisPool jedisPool) {
+    public PoolRedisCache(Pool<Jedis> jedisPool) {
         super(null, -1);
         init(getCacheName(), jedisPool, new RedisSupport<>(getCacheName(), keyClass, valueClass));
     }
 
-    public PoolRedisCache(JedisPool jedisPool, Class<K> keyClass, Class<V> valueClass) {
+    public PoolRedisCache(Pool<Jedis> jedisPool, Class<K> keyClass, Class<V> valueClass) {
         super(null, -1, keyClass, valueClass);
         init(getCacheName(), jedisPool, new RedisSupport<>(getCacheName(), keyClass, valueClass));
     }
 
-    public PoolRedisCache(String cacheName, JedisPool jedisPool) {
+    public PoolRedisCache(String cacheName, Pool<Jedis> jedisPool) {
         super(cacheName, -1);
         init(getCacheName(), jedisPool, new RedisSupport<>(getCacheName(), keyClass, valueClass));
     }
 
-    public PoolRedisCache(String cacheName, JedisPool jedisPool, Class<K> keyClass, Class<V> valueClass) {
+    public PoolRedisCache(String cacheName, Pool<Jedis> jedisPool, Class<K> keyClass, Class<V> valueClass) {
         super(cacheName, -1, keyClass, valueClass);
         init(getCacheName(), jedisPool, new RedisSupport<>(getCacheName(), keyClass, valueClass));
     }
 
-    private void init(String cacheName, JedisPool jedisPool, RedisSupport<K, V> support) {
+    private void init(String cacheName, Pool<Jedis> jedisPool, RedisSupport<K, V> support) {
         this.jedisPool = jedisPool;
         if(!CommonUtils.isBlank(cacheName)) {
             DB_INDEX.add(cacheName);
@@ -71,7 +71,7 @@ public class PoolRedisCache<K extends Serializable, V extends Serializable> exte
                 Jedis jedis = JedisUtils.getJedis(jedisPool, database);
                 RedisSupport<K, V> s = support.begin(jedis)
         ) {
-            return s.dbSize();
+            return s.size();
         } catch (IOException e) {
             logger.error(e.getMessage(), e);
         }
@@ -93,7 +93,7 @@ public class PoolRedisCache<K extends Serializable, V extends Serializable> exte
 
     @Override
     public boolean containsValue(V value) {
-        logger.warn("This method[containsValue] will cost large memory to compare.");
+        logger.warn("This method[containsValue] will cost large memory to compare and you MUST override equals method.");
         Collection<V> values = values();
         for(V v : values) {
             if(value.equals(v)) {

@@ -170,19 +170,14 @@ public class RedisSupport<K extends Serializable, V extends Serializable> implem
     }
 
     @SuppressWarnings("unchecked")
-    public Set<K> keys(String pattern) throws IOException, ClassNotFoundException {
+    public<E extends Serializable> Set<K> keys(E pattern) throws IOException, ClassNotFoundException {
         JedisCommands jedisCommands = getJedisCommands();
         if(jedisCommands instanceof Jedis) {
             Jedis jedis = (Jedis) jedisCommands;
 
-            byte[] redisKey;
-            if(namespace != null) {
-                redisKey = SafeEncoder.encode(namespace + pattern);
-            } else {
-                redisKey = SafeEncoder.encode(pattern);
-            }
+            byte[] redisKey = toRedisKey(pattern);
             Set<byte[]> keys = jedis.keys(redisKey);
-            Set<K> keySet = new HashSet<>(keys.size());
+            HashSet<K> keySet = new HashSet<>(keys.size());
             for (byte[] bytes : keys) {
                 keySet.add(fromRedisKey(bytes));
             }
@@ -200,15 +195,15 @@ public class RedisSupport<K extends Serializable, V extends Serializable> implem
             byte[] redisKey = toRedisKey(param);
             Set<byte[]> bKeys = jedis.keys(redisKey);
 
-            HashMap<Integer, Set<byte[]>> slotMap = new HashMap<>();
+            HashMap<Integer, HashSet<byte[]>> slotMap = new HashMap<>();
             for(byte[] bytes : bKeys) {
                 int slot = JedisClusterCRC16.getSlot(bytes);
-                Set<byte[]> slotKeys = slotMap.computeIfAbsent(slot, k1 -> new HashSet<>());
+                HashSet<byte[]> slotKeys = slotMap.computeIfAbsent(slot, k1 -> new HashSet<>());
                 slotKeys.add(bytes);
             }
 
             HashMap<K, V> result = new HashMap<>(bKeys.size());
-            for(Set<byte[]> keySet : slotMap.values()) {
+            for(HashSet<byte[]> keySet : slotMap.values()) {
                 int size = keySet.size();
                 byte[][] keys = keySet.toArray(new byte[size][]);
                 byte[][] values = jedis.mget(keys).toArray(new byte[size][]);
@@ -231,7 +226,7 @@ public class RedisSupport<K extends Serializable, V extends Serializable> implem
         return query("*").values();
     }
 
-    public long dbSize() {
+    public long size() {
         JedisCommands jedisCommands = getJedisCommands();
         if(jedisCommands instanceof Jedis) {
             if(namespace != null) {
@@ -246,7 +241,7 @@ public class RedisSupport<K extends Serializable, V extends Serializable> implem
         }
     }
 
-    protected <E extends Serializable> byte[] toRedisKey(E key) throws IOException {
+    <E extends Serializable> byte[] toRedisKey(E key) throws IOException {
         if(ReflectionUtils.isPrimitiveOrWrapper(key.getClass())) {
             String sKey = CommonUtils.toString(key);
             if(namespace != null) {
@@ -270,7 +265,7 @@ public class RedisSupport<K extends Serializable, V extends Serializable> implem
     }
 
     @SuppressWarnings("unchecked")
-    private K fromRedisKey(byte[] redisKey) throws IOException, ClassNotFoundException {
+    K fromRedisKey(byte[] redisKey) throws IOException, ClassNotFoundException {
         if(ReflectionUtils.isPrimitiveOrWrapper(keyClass)) {
             String sKey = SafeEncoder.encode(redisKey);
             if(namespace != null) {
@@ -289,8 +284,7 @@ public class RedisSupport<K extends Serializable, V extends Serializable> implem
     }
 
     @SuppressWarnings("unchecked")
-    private V fromRedisValue(byte[] bValue) throws IOException, ClassNotFoundException {
-        // TODO 不同Redis数据类型get方式不同
+    V fromRedisValue(byte[] bValue) throws IOException, ClassNotFoundException {
         if(bValue == null) {
             return null;
         } else if(ReflectionUtils.isPrimitiveOrWrapper(valueClass)) {
@@ -300,7 +294,7 @@ public class RedisSupport<K extends Serializable, V extends Serializable> implem
         }
     }
 
-    private byte[] toRedisValue(V value) throws IOException {
+    byte[] toRedisValue(V value) throws IOException {
         if (ReflectionUtils.isPrimitiveOrWrapper(value.getClass())) {
             return SafeEncoder.encode(CommonUtils.toString(value));
         } else {
@@ -308,7 +302,7 @@ public class RedisSupport<K extends Serializable, V extends Serializable> implem
         }
     }
 
-    protected JedisCommands getJedisCommands() {
+    JedisCommands getJedisCommands() {
         JedisCommands jedisCommands = local.get();
         if (jedisCommands == null) {
             throw new RuntimeException("Please call begin at first");
