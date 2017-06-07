@@ -1,4 +1,9 @@
-package cn.ufunny.game.libs.dao.mybatis.proxy;
+/*
+ * Copyright (c) 2014-2017. JarkimZhu
+ * This software can not be used privately without permission
+ */
+
+package me.jarkimzhu.libs.sql.mybatis.proxy;
 
 import java.io.IOException;
 import java.io.Reader;
@@ -24,7 +29,7 @@ public class SessionFactory {
 			String resource="mybatis.xml";
 			Reader reader=Resources.getResourceAsReader(resource);
 			sqlSessionFactory = new SqlSessionFactoryBuilder().build(reader);
-			threadHolder = new ThreadLocal<ProxyHolder<SqlSession>>();
+			threadHolder = new ThreadLocal<>();
 		} catch (IOException e) {
 			logger.error("#IOException happened in initialising the SessionFactory", e);
 			throw new ExceptionInInitializerError(e);

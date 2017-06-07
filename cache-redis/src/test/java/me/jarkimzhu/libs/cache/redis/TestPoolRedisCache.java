@@ -3,7 +3,6 @@ package me.jarkimzhu.libs.cache.redis;
 import me.jarkimzhu.libs.cache.redis.pool.PoolRedisCache;
 import org.junit.Assert;
 import org.junit.Test;
-import redis.clients.jedis.Jedis;
 import redis.clients.jedis.JedisPool;
 import redis.clients.jedis.JedisPoolConfig;
 import redis.clients.jedis.Protocol;
@@ -56,14 +55,6 @@ public class TestPoolRedisCache {
     @Test
     public void testValues() {
         System.out.println(cache.values());
-    }
-
-    @Test
-    public void testInfo() {
-        JedisPool jedisPool = new JedisPool("10.1.101.194", 7000);
-        Jedis jedis = jedisPool.getResource();
-        System.out.println(jedis.keys("TGT*zhujiaqi*"));
-//        System.out.println(jedis.info());
     }
 
     private class IntegerObjectCache extends PoolRedisCache<Integer, User> {

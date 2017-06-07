@@ -5,7 +5,7 @@ import java.util.Map;
 
 import javax.annotation.Resource;
 
-import cn.ufunny.game.libs.dao.mybatis.proxy.SessionFactory;
+import me.jarkimzhu.libs.sql.mybatis.proxy.SessionFactory;
 import me.jarkimzhu.libs.pagination.Query;
 import me.jarkimzhu.libs.sql.ISqlDao;
 import org.apache.ibatis.session.RowBounds;

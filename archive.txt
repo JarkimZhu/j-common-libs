@@ -1,0 +1,1 @@
+mvn deploy -DaltDeploymentRepository=jcl-maven-snapshot::default::file:E:/JarkimZhu/jcl-maven-snapshot/Repository

@@ -1,4 +1,9 @@
-package cn.ufunny.game.libs.dao.mybatis.proxy;
+/*
+ * Copyright (c) 2014-2017. JarkimZhu
+ * This software can not be used privately without permission
+ */
+
+package me.jarkimzhu.libs.sql.mybatis.proxy;
 
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
@@ -20,7 +25,7 @@ public class ProxyBiz<E> implements InvocationHandler {
 	
 	@Override
 	public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
-		ProxyHolder<SqlSession> proxyHolder = null;
+		ProxyHolder<SqlSession> proxyHolder;
 		if(method.getName().startsWith("call")) {
 			proxyHolder = SessionFactory.openSqlSession(method, ExecutorType.SIMPLE);
 		} else {

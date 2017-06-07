@@ -1,4 +1,9 @@
-package cn.ufunny.game.libs.dao.mybatis.proxy;
+/*
+ * Copyright (c) 2014-2017. JarkimZhu
+ * This software can not be used privately without permission
+ */
+
+package me.jarkimzhu.libs.sql.mybatis.proxy;
 
 import java.lang.reflect.Method;
 
