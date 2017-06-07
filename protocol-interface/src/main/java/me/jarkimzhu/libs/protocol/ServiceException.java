@@ -10,17 +10,17 @@ public class ServiceException extends RuntimeException {
     private int serviceCode;
 
     public ServiceException(int serviceCode) {
-        super();
+        super(null, null, false, false);
         this.serviceCode = serviceCode;
     }
 
     public ServiceException(int serviceCode, String message) {
-        super(message);
+        super(message, null, false, false);
         this.serviceCode = serviceCode;
     }
 
     public ServiceException(ResultCode resultCode) {
-        super(resultCode.getMessage());
+        super(resultCode.getMessage(), null, false, false);
         this.serviceCode = resultCode.getCode();
     }
 

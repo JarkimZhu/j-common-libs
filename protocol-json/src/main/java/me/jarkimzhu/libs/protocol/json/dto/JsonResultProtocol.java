@@ -108,7 +108,7 @@ public class JsonResultProtocol {
         if (this.result == ResultCode.SUCCESS.getCode()) {
             this.message = bean.getEntity();
         } else {
-            this.message = bean.getErrorMessage();
+            this.message = bean.getMessage();
         }
         return this;
     }

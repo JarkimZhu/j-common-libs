@@ -10,7 +10,7 @@ public class ReturnBean<T> {
 
     private int resultCode;    //返回，状态码
     private T entity;          //返回，结果对象
-    private String errorMessage;
+    private String message;
 
     public ReturnBean() {
         this.resultCode = ResultCode.SUCCESS.getCode();
@@ -25,7 +25,7 @@ public class ReturnBean<T> {
 
     public ReturnBean(ResultCode resultCode) {
         this.resultCode = resultCode.getCode();
-        this.errorMessage = resultCode.getMessage();
+        this.message = resultCode.getMessage();
     }
 
     public Integer getResultCode() {
@@ -39,7 +39,7 @@ public class ReturnBean<T> {
 
     public ReturnBean<T> setResultCode(ResultCode result) {
         this.resultCode = result.getCode();
-        this.errorMessage = result.getMessage();
+        this.message = result.getMessage();
         return this;
     }
 
@@ -52,12 +52,12 @@ public class ReturnBean<T> {
         return this;
     }
 
-    public String getErrorMessage() {
-        return errorMessage;
+    public String getMessage() {
+        return message;
     }
 
-    public ReturnBean<T> setErrorMessage(String errorMessage) {
-        this.errorMessage = errorMessage;
+    public ReturnBean<T> setMessage(String message) {
+        this.message = message;
         return this;
     }
 }
