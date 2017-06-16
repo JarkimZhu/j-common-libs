@@ -219,12 +219,10 @@ public class ClusterRedisCache<K extends Serializable, V extends Serializable> e
     }
 
     @Override
-    public long getTimeout() {
-        long timeout = super.getTimeout();
+    public void setTimeout(long timeout) {
         if(timeout > -1) {
-            return timeout / 1000;
-        } else {
-            return timeout;
+            timeout = timeout / 1000;
         }
+        super.setTimeout(timeout);
     }
 }

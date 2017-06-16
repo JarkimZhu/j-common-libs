@@ -232,8 +232,11 @@ public class PoolRedisCache<K extends Serializable, V extends Serializable> exte
     }
 
     @Override
-    public long getTimeout() {
-        return JedisUtils.getTimeout(super.getTimeout());
+    public void setTimeout(long timeout) {
+        if(timeout > -1) {
+            timeout = timeout / 1000;
+        }
+        super.setTimeout(timeout);
     }
 
     @Override

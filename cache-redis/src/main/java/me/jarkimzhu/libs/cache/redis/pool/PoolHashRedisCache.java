@@ -132,9 +132,4 @@ public class PoolHashRedisCache<F extends Serializable, V extends Serializable> 
     public void forEach(BiConsumer<? super F, ? super V> action) {
 
     }
-
-    @Override
-    public long getTimeout() {
-        return JedisUtils.getTimeout(super.getTimeout());
-    }
 }

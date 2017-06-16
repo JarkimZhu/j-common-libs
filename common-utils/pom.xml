@@ -15,14 +15,13 @@
         <dependency>
             <groupId>com.alibaba</groupId>
             <artifactId>fastjson</artifactId>
-            <version>1.2.20</version>
+            <version>1.2.32</version>
             <scope>provided</scope>
         </dependency>
         <dependency>
             <groupId>de.ruedigermoeller</groupId>
             <artifactId>fst</artifactId>
-            <version>2.48</version>
-            <scope>provided</scope>
+            <version>2.50</version>
         </dependency>
     </dependencies>
 

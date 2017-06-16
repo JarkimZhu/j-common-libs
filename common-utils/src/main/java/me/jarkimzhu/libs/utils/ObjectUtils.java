@@ -16,7 +16,7 @@ public abstract class ObjectUtils {
     private static ISerializer serializer;
 
     static {
-        String p = System.getProperty("j-serializer", "jdk");
+        String p = System.getProperty("j-serializer", "fst");
         if("fst".equalsIgnoreCase(p)) {
             serializer = FstSerializer.INSTANT;
         } else {

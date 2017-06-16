@@ -5,6 +5,7 @@
 
 package me.jarkimzhu.libs.utils;
 
+import java.util.Collection;
 import java.util.concurrent.ThreadLocalRandom;
 
 /**
@@ -20,5 +21,21 @@ public abstract class MathUtils {
             sb.append(ThreadLocalRandom.current().nextInt(9));
         }
         return sb.toString();
+    }
+
+    public static int getMinValue(Collection<Integer> values) {
+        int min = Integer.MAX_VALUE;
+        for (Integer v : values) {
+            min = Integer.min(v, min);
+        }
+        return min;
+    }
+
+    public static int getMaxValue(Collection<Integer> values) {
+        int max = Integer.MIN_VALUE;
+        for (Integer v : values) {
+            max = Integer.max(v, max);
+        }
+        return max;
     }
 }

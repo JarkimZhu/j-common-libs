@@ -25,7 +25,7 @@ public abstract class AbstractCache<K, V> implements ICache<K, V> {
     @SuppressWarnings("unchecked")
     protected AbstractCache(String cacheName, long timeout) {
         this.cacheName = cacheName;
-        this.timeout = timeout;
+        setTimeout(timeout);
 
         Type[] types = ReflectionUtils.getGenericTypes(getClass());
         if(types.length >= 2) {
@@ -39,7 +39,7 @@ public abstract class AbstractCache<K, V> implements ICache<K, V> {
     @SuppressWarnings("unchecked")
     protected AbstractCache(String cacheName, long timeout, Class<K> keyClass, Class<V> valueClass) {
         this.cacheName = cacheName;
-        this.timeout = timeout;
+        setTimeout(timeout);
         this.keyClass = keyClass;
         this.valueClass = valueClass;
     }

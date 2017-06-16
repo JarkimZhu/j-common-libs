@@ -22,12 +22,4 @@ public abstract class JedisUtils {
         }
         return jedis;
     }
-
-    public static long getTimeout(long milliseconds) {
-        if(milliseconds > -1) {
-            return milliseconds / 1000;
-        } else {
-            return milliseconds;
-        }
-    }
 }

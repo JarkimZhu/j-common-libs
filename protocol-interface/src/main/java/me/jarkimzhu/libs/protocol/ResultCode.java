@@ -9,7 +9,6 @@ package me.jarkimzhu.libs.protocol;
 public class ResultCode {
 
     public static final ResultCode SUCCESS = new ResultCode(0, "Success");
-    public static final ResultCode REQUIREMENT_FLASE = new ResultCode(10, "requirement flase");
     public static final ResultCode INVALID_PARAM = new ResultCode(1, "Invalid parameter(s)");
     public static final ResultCode INVALID_SESSION = new ResultCode(100, "Invalid session");
     public static final ResultCode SERVER_ERROR = new ResultCode(500, "Server internal error");
