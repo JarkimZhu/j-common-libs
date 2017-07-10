@@ -9,6 +9,7 @@ import javax.mail.Session;
 import javax.mail.Transport;
 import javax.mail.internet.InternetAddress;
 import javax.mail.internet.MimeMessage;
+import java.io.UnsupportedEncodingException;
 import java.util.Date;
 import java.util.Properties;
 
@@ -30,11 +31,10 @@ public class EmailMessageClient implements IMessageClient {
     public EmailMessageClient(Properties props) {
         // 根据配置创建会话对象, 用于和邮件服务器交互
         session = Session.getDefaultInstance(props);
-        session.setDebug(true);
     }
 
     @Override
-    public void sendMessage(IMessage message) throws MessagingException {
+    public void sendMessage(IMessage message) throws MessagingException, UnsupportedEncodingException {
         // 3. 创建一封邮件
         MimeMessage mimeMessage = createMimeMessage(session, message);
         // 4. 根据 Session 获取邮件传输对象
@@ -51,33 +51,29 @@ public class EmailMessageClient implements IMessageClient {
         }
     }
 
-    private MimeMessage createMimeMessage(Session session, IMessage message) {
+    private MimeMessage createMimeMessage(Session session, IMessage message) throws MessagingException, UnsupportedEncodingException {
         // 1. 创建一封邮件
         MimeMessage mimeMessage = new MimeMessage(session);
 
-        try {
-            // 2. From: 发件人
-            mimeMessage.setFrom(new InternetAddress(message.getFrom().getEmail(), message.getTitle(), CHARSET));
+        // 2. From: 发件人
+        mimeMessage.setFrom(new InternetAddress(message.getFrom().getEmail(), message.getTitle(), CHARSET));
 
-            // 3. To: 收件人（可以增加多个收件人、抄送、密送）
-            for(IUser to : message.getRecipients()) {
-                mimeMessage.addRecipient(MimeMessage.RecipientType.TO, new InternetAddress(to.getEmail(), to.getRealName(), CHARSET));
-            }
-
-            // 4. Subject: 邮件主题
-            mimeMessage.setSubject(message.getTitle(), CHARSET);
-
-            // 5. Content: 邮件正文（可以使用html标签）
-            mimeMessage.setContent(message.getContent(), "text/html;charset=UTF-8");
-
-            // 6. 设置发件时间
-            mimeMessage.setSentDate(new Date());
-
-            // 7. 保存设置
-//            message.saveChanges();
-        } catch (Exception e) {
-            e.printStackTrace();
+        // 3. To: 收件人（可以增加多个收件人、抄送、密送）
+        for(IUser to : message.getRecipients()) {
+            mimeMessage.addRecipient(MimeMessage.RecipientType.TO, new InternetAddress(to.getEmail(), to.getRealName(), CHARSET));
         }
+
+        // 4. Subject: 邮件主题
+        mimeMessage.setSubject(message.getTitle(), CHARSET);
+
+        // 5. Content: 邮件正文（可以使用html标签）
+        mimeMessage.setContent(message.getContent(), "text/html;charset=UTF-8");
+
+        // 6. 设置发件时间
+        mimeMessage.setSentDate(new Date());
+
+        // 7. 保存设置
+        mimeMessage.saveChanges();
 
         return mimeMessage;
     }
