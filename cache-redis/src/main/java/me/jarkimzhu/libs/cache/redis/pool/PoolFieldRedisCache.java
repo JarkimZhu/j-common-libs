@@ -100,6 +100,11 @@ public class PoolFieldRedisCache<K extends Serializable, F extends Serializable,
     }
 
     @Override
+    public boolean putIfNotExists(K key, V value) {
+        return putIfNotExists(key, defaultField, value);
+    }
+
+    @Override
     public void remove(K key) {
         delegate.remove(key);
     }
@@ -221,13 +226,30 @@ public class PoolFieldRedisCache<K extends Serializable, F extends Serializable,
         ) {
             V old = s.hget(key, field);
             if(old == null) {
-                s.hsetnx(key, field, value);
+                if(s.hsetnx(key, field, value) != 0) {
+                    return null;
+                } else {
+                    old = s.hget(key, field);
+                }
             }
             return old;
         } catch (IOException | ClassNotFoundException e) {
             logger.error(e.getMessage(), e);
         }
         return null;
+    }
+
+    @Override
+    public boolean putIfNotExists(K key, F field, V value) {
+        try(
+                Jedis jedis = JedisUtils.getJedis(jedisPool, database);
+                HashRedisSupport<K, F, V> s = support.begin(jedis)
+        ) {
+            return s.hsetnx(key, field, value) != 0;
+        } catch (IOException e) {
+            logger.error(e.getMessage(), e);
+        }
+        return false;
     }
 
     @Override

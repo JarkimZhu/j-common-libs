@@ -28,6 +28,8 @@ public interface IFieldCache<K, F, V> extends ICache<K, V> {
 
     V putIfAbsent(K key, F field, V value);
 
+    boolean putIfNotExists(K key, F field, V value);
+
     void remove(K key, F field);
 
     void clear(K key);

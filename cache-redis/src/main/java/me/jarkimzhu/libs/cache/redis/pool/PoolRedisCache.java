@@ -141,13 +141,30 @@ public class PoolRedisCache<K extends Serializable, V extends Serializable> exte
         ) {
             V old = s.get(key);
             if(old == null) {
-                s.setnx(key, value, (int) getTimeout());
+                if(s.setnx(key, value, (int) getTimeout()) != 0) {
+                    return null;
+                } else {
+                    old = s.get(key);
+                }
             }
             return old;
         } catch (IOException | ClassNotFoundException e) {
             logger.error(e.getMessage(), e);
         }
         return null;
+    }
+
+    @Override
+    public boolean putIfNotExists(K key, V value) {
+        try (
+                Jedis jedis = JedisUtils.getJedis(jedisPool, database);
+                RedisSupport<K, V> s = support.begin(jedis)
+        ) {
+            return s.setnx(key, value, (int) getTimeout()) != 0;
+        } catch (IOException e) {
+            logger.error(e.getMessage(), e);
+        }
+        return false;
     }
 
     @Override

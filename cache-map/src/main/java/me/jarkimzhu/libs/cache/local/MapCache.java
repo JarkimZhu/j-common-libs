@@ -71,6 +71,11 @@ public class MapCache<K, V> extends AbstractCache<K, V> implements ICache<K, V> 
     }
 
     @Override
+    public boolean putIfNotExists(K key, V value) {
+        return store.putIfAbsent(key, value) == null;
+    }
+
+    @Override
     public void remove(K key) {
         store.remove(key);
     }

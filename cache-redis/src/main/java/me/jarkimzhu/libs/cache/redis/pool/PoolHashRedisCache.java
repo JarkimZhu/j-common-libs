@@ -104,6 +104,11 @@ public class PoolHashRedisCache<F extends Serializable, V extends Serializable> 
     }
 
     @Override
+    public boolean putIfNotExists(F key, V value) {
+        return false;
+    }
+
+    @Override
     public void remove(F key) {
 
     }

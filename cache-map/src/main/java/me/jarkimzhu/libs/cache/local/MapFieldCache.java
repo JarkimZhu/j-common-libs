@@ -73,6 +73,11 @@ public class MapFieldCache<K, F, V> extends AbstractFieldCache<K, F, V> implemen
     }
 
     @Override
+    public boolean putIfNotExists(K key, V value) {
+        return putIfNotExists(key, defaultField, value);
+    }
+
+    @Override
     public void remove(K key) {
         store.remove(key);
     }
@@ -149,6 +154,11 @@ public class MapFieldCache<K, F, V> extends AbstractFieldCache<K, F, V> implemen
     public V putIfAbsent(K key, F field, V value) {
         Map<F, V> map = store.computeIfAbsent(key, k -> new HashMap<>());
         return map.putIfAbsent(field, value);
+    }
+
+    @Override
+    public boolean putIfNotExists(K key, F field, V value) {
+        return putIfAbsent(key, field, value) == null;
     }
 
     @Override

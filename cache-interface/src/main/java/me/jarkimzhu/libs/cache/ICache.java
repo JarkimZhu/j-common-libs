@@ -28,6 +28,8 @@ public interface ICache<K, V> {
 
     V putIfAbsent(K key, V value);
 
+    boolean putIfNotExists(K key, V value);
+
     void remove(K key);
 
     void clear();
