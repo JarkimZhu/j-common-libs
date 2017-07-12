@@ -13,20 +13,20 @@ package me.jarkimzhu.libs.user;
  */
 public interface IClient extends IUser {
     String getDeviceId();
-    void setDeviceId();
+    void setDeviceId(String deviceId);
 
     String getAppName();
-    void setAppName();
+    void setAppName(String appName);
 
     String getVersion();
-    void setVersion();
+    void setVersion(String version);
 
     String getIp();
-    void setIp();
+    void setIp(String ip);
 
     String getStore();
-    void setStore();
+    void setStore(String store);
 
     String getOS();
-    void setOS();
+    void setOS(String os);
 }
