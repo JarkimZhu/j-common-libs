@@ -4,11 +4,10 @@ import me.jarkimzhu.libs.message.IMessage;
 import me.jarkimzhu.libs.message.IMessageClient;
 import me.jarkimzhu.libs.user.IUser;
 
-import javax.mail.MessagingException;
-import javax.mail.Session;
-import javax.mail.Transport;
-import javax.mail.internet.InternetAddress;
-import javax.mail.internet.MimeMessage;
+import javax.activation.DataHandler;
+import javax.activation.FileDataSource;
+import javax.mail.*;
+import javax.mail.internet.*;
 import java.io.UnsupportedEncodingException;
 import java.util.Date;
 import java.util.Properties;
@@ -56,7 +55,7 @@ public class EmailMessageClient implements IMessageClient {
         MimeMessage mimeMessage = new MimeMessage(session);
 
         // 2. From: 发件人
-        mimeMessage.setFrom(new InternetAddress(message.getFrom().getEmail(), message.getTitle(), CHARSET));
+        mimeMessage.setFrom(new InternetAddress(message.getFrom().getEmail(), message.getFrom().getRealName(), CHARSET));
 
         // 3. To: 收件人（可以增加多个收件人、抄送、密送）
         for(IUser to : message.getRecipients()) {
@@ -66,8 +65,14 @@ public class EmailMessageClient implements IMessageClient {
         // 4. Subject: 邮件主题
         mimeMessage.setSubject(message.getTitle(), CHARSET);
 
-        // 5. Content: 邮件正文（可以使用html标签）
-        mimeMessage.setContent(message.getContent(), "text/html;charset=UTF-8");
+        if(message.getAttachments() == null || message.getAttachments().length == 0) {
+            // 5. Content: 邮件正文（可以使用html标签）
+            mimeMessage.setContent(message.getContent(), "text/html;charset=UTF-8");
+        } else {
+            // 5. 发送附件
+            Multipart multipart = setupForAttachments(message);
+            mimeMessage.setContent(multipart);
+        }
 
         // 6. 设置发件时间
         mimeMessage.setSentDate(new Date());
@@ -76,5 +81,23 @@ public class EmailMessageClient implements IMessageClient {
         mimeMessage.saveChanges();
 
         return mimeMessage;
+    }
+
+    private Multipart setupForAttachments(IMessage message) throws MessagingException, UnsupportedEncodingException {
+        Multipart multipart = new MimeMultipart();
+
+        BodyPart bpContent = new MimeBodyPart();
+        bpContent.setContent(message.getContent(), "text/html;charset=UTF-8");
+        // 在组件上添加邮件文本
+        multipart.addBodyPart(bpContent);
+
+        for(String filePath : message.getAttachments()) {
+            BodyPart bpAttachments = new MimeBodyPart();
+            FileDataSource fds = new FileDataSource(filePath);
+            bpAttachments.setDataHandler(new DataHandler(fds));
+            bpAttachments.setFileName(MimeUtility.encodeText(fds.getName(), "utf-8", null)); // 解决附件名称乱码
+            multipart.addBodyPart(bpAttachments);// 添加附件
+        }
+        return multipart;
     }
 }
