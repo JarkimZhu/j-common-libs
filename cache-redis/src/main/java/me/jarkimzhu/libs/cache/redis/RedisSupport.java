@@ -5,10 +5,7 @@ import me.jarkimzhu.libs.utils.ObjectUtils;
 import me.jarkimzhu.libs.utils.reflection.ReflectionUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import redis.clients.jedis.BinaryJedisClusterCommands;
-import redis.clients.jedis.BinaryJedisCommands;
-import redis.clients.jedis.Jedis;
-import redis.clients.jedis.JedisCommands;
+import redis.clients.jedis.*;
 import redis.clients.jedis.exceptions.JedisClusterException;
 import redis.clients.util.JedisClusterCRC16;
 import redis.clients.util.SafeEncoder;
@@ -222,6 +219,37 @@ public class RedisSupport<K extends Serializable, V extends Serializable> implem
         }
     }
 
+    public Object eval(String script) {
+        JedisCommands jedisCommands = getJedisCommands();
+        if (jedisCommands instanceof BinaryScriptingCommands) {
+            return ((BinaryScriptingCommands) jedisCommands).eval(SafeEncoder.encode(script));
+        } else {
+            throw new JedisClusterException("JedisCluster not support this operation");
+        }
+    }
+
+    public Object eval(String script, List<K> keys, List<V> args) throws IOException {
+        if (CommonUtils.isBlank(keys) || CommonUtils.isBlank(args)) {
+            return eval(script);
+        }
+
+        JedisCommands jedisCommands = getJedisCommands();
+        List<byte[]> bKeys = new ArrayList<>(keys.size());
+        List<byte[]> bArgs = new ArrayList<>(args.size());
+        for (K key : keys) {
+            bKeys.add(toRedisKey(key));
+        }
+        for (V arg : args) {
+            bArgs.add(toRedisValue(arg));
+        }
+        byte[] bScript = SafeEncoder.encode(script);
+        if (jedisCommands instanceof BinaryScriptingCommands) {
+            return ((BinaryScriptingCommands) jedisCommands).eval(bScript, bKeys, bArgs);
+        } else {
+            return ((JedisClusterBinaryScriptingCommands) jedisCommands).eval(bScript, bKeys, bArgs);
+        }
+    }
+
     public Collection<V> values() throws IOException, ClassNotFoundException {
         return query("*").values();
     }
@@ -325,6 +353,6 @@ public class RedisSupport<K extends Serializable, V extends Serializable> implem
 
     @Override
     public void close() throws IOException {
-        local.set(null);
+        local.remove();
     }
 }

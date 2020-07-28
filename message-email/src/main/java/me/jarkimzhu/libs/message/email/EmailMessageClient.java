@@ -95,8 +95,10 @@ public class EmailMessageClient implements IMessageClient {
             BodyPart bpAttachments = new MimeBodyPart();
             FileDataSource fds = new FileDataSource(filePath);
             bpAttachments.setDataHandler(new DataHandler(fds));
-            bpAttachments.setFileName(MimeUtility.encodeText(fds.getName(), "utf-8", null)); // 解决附件名称乱码
-            multipart.addBodyPart(bpAttachments);// 添加附件
+            // 解决附件名称乱码
+            bpAttachments.setFileName(MimeUtility.encodeText(fds.getName(), "utf-8", null));
+            // 添加附件
+            multipart.addBodyPart(bpAttachments);
         }
         return multipart;
     }

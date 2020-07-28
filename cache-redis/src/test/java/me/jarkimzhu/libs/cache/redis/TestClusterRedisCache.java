@@ -19,12 +19,12 @@ public class TestClusterRedisCache {
 
     public TestClusterRedisCache() {
         JedisPoolConfig config = new JedisPoolConfig();
-        HostAndPort hp1 = new HostAndPort("10.2.108.4", 7000);
-        HostAndPort hp2 = new HostAndPort("10.2.108.4", 7001);
+        HostAndPort hp1 = new HostAndPort("10.2.112.26", 7000);
+        HostAndPort hp2 = new HostAndPort("10.2.112.27", 7004);
         Set<HostAndPort> hps = new HashSet<>(2);
         hps.add(hp1);
         hps.add(hp2);
-        JedisCluster jedisCluster = new JedisCluster(hps, 500, 1000, 3, "123456", config);
+        JedisCluster jedisCluster = new JedisCluster(hps, 500, 1000, 3, "redis2016#", config);
         cache = new ClusterRedisCache<>("TGT", jedisCluster, String.class, String.class);
     }
 

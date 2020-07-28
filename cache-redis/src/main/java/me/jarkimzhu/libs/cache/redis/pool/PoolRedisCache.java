@@ -248,6 +248,30 @@ public class PoolRedisCache<K extends Serializable, V extends Serializable> exte
         }
     }
 
+    public Object eval(String script) {
+        try (
+                Jedis jedis = JedisUtils.getJedis(jedisPool, database);
+                RedisSupport<K, V> s = support.begin(jedis)
+        ) {
+            return s.eval(script);
+        } catch (IOException e) {
+            logger.error(e.getMessage(), e);
+        }
+        return null;
+    }
+
+    public Object eval(String script, List<K> keys, List<V> args) {
+        try (
+                Jedis jedis = JedisUtils.getJedis(jedisPool, database);
+                RedisSupport<K, V> s = support.begin(jedis)
+        ) {
+            return s.eval(script, keys, args);
+        } catch (IOException e) {
+            logger.error(e.getMessage(), e);
+        }
+        return null;
+    }
+
     @Override
     public void setTimeout(long timeout) {
         if(timeout > -1) {

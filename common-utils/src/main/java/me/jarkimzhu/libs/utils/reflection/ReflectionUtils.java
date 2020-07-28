@@ -31,7 +31,8 @@ public abstract class ReflectionUtils {
     public static String getGetterName(String fieldName, Class<?> fieldType) {
         StringBuilder sb = new StringBuilder(fieldName.length() + 3);
         String upper = String.valueOf(fieldName.charAt(0)).toUpperCase();
-        if (Boolean.class.equals(fieldType)) {
+        if (Boolean.class.equals(fieldType) ||
+                boolean.class.equals(fieldType)) {
             sb.append("is");
         } else {
             sb.append("get");
@@ -53,6 +54,18 @@ public abstract class ReflectionUtils {
         String setterName = getSetterName(fieldName);
         Method setter = clazz.getMethod(setterName, parameters.getClass());
         setter.invoke(value, parameters);
+    }
+
+    public static boolean hasMethod(Class<?> clazz, String methodName) {
+        return hasMethod(clazz, methodName, (Class<?>[]) null);
+    }
+
+    public static boolean hasMethod(Class<?> clazz, String methodName, Class<?>... parameterTypes) {
+        try {
+            return clazz.getMethod(methodName, parameterTypes) != null;
+        } catch (NoSuchMethodException ignored) {
+        }
+        return false;
     }
 
     public static boolean isInstanceOf(Object obj, String className) {

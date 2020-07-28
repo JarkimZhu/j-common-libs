@@ -1,7 +1,6 @@
 package me.jarkimzhu.libs.script;
 
 import javax.script.ScriptException;
-import java.io.FileNotFoundException;
 import java.io.IOException;
 
 /**
